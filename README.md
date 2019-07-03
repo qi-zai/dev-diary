@@ -105,7 +105,7 @@ SpeechSynthesis
 
 head 大部分内容是不可见的，除了 title 和 图标之外。head 中可以包含的标签有 base，title，script，style，link，meta
 
-==**重点：meta**==
+**重点：meta**
 
 **注意：** name 是一种相对更加自由的约定，http 标准规定了一些 name 作为大家使用的共识，同时也鼓励开发者发明自己的 name 使用。
 
