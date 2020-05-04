@@ -15,23 +15,17 @@
 
 <body>
   <div id="app"></div>
-  <script src="//unpkg.com/docsify-edit-on-github/index.js"></script>
   <script>
     window.$docsify = {
       name: '开发日记',
       loadSidebar: true,
       subMaxLevel: 3,
-      loadNavbar: true,
       repo: 'qi-zai/development-diary',
 
       search: {
         placeholder: '搜索',
         noData: '找不到结果!',
       },
-
-      plugins: [
-        EditOnGithubPlugin.create('https://github.com/qi-zai/development-diary/tree/master/docs/', null, '编辑')
-      ]
     }
   </script>
   <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
