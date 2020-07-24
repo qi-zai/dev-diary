@@ -22,14 +22,14 @@
   * [1.15. js 小技巧](1-frond/1.15-JS小技巧)
 
 * 2\. 拓展
-  * [2.1. Linux](2-extend2/.1-Linux)
-  * [2.2. Node](2-extend2/.2-Node)
-  * [2.3. Nginx](2-extend2/.3-Nginx)
-  * [2.4. JDK&Tomcat](2-extend2/.4-JDK&Tomcat)
-  * [2.5. Jenkins](2-extend2/.5-Jenkins)
-  * [2.6. Readis](2-extend2/.6-Readis)
-  * [2.7. Docker](2-extend2/.7-Docker)
-  * [2.8. Gitlab](2-extend2/.8-Gitlab)
+  * [2.1. Linux](2-extend/2.1-Linux)
+  * [2.2. Node](2-extend/2.2-Node)
+  * [2.3. Nginx](2-extend/2.3-Nginx)
+  * [2.4. JDK&Tomcat](2-extend/2.4-JDK&Tomcat)
+  * [2.5. Jenkins](2-extend/2.5-Jenkins)
+  * [2.6. Readis](2-extend/2.6-Readis)
+  * [2.7. Docker](2-extend/2.7-Docker)
+  * [2.8. Gitlab](2-extend/2.8-Gitlab)
   * 2.9. MariaDB
   * 2.10. FastDFS
   * 2.11. PHP
