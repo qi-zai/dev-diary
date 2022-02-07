@@ -30,6 +30,7 @@
 - [矢量插画 - iconscout](https://iconscout.com/popular-illustrations)
 - [矢量插画 - manypixels](https://www.manypixels.co/gallery)
 - [矢量插画图标](https://icons8.com/icons/fluency)
+- [spline 3D绘图](https://app.spline.design)
 
 ## 生活常用
 - [ProcessOn - 在线作图，实时协作](https://www.processon.com)
