@@ -20,6 +20,7 @@
   - [palettemaker](https://palettemaker.com)
 
 - 矢量图标和矢量插画
+  - [矢量图标动画库](https://lordicon.com)
   - [矢量图标库](http://www.iconfont.cn)
   - [Illustrations | unDraw](https://undraw.co/illustrations)
   - [IRA Design - Illustration Gallery @ Creative Tim](https://iradesign.io/gallery/illustrations)
@@ -63,3 +64,6 @@
 - [Mac毒](https://www.macdo.cn)
 - [xclient.info](https://xclient.info)
 - [macwk.com](https://macwk.com)
+
+# 中医
+- [中医大陆经方派倪海厦的徒弟和他推荐的医生名单](http://www.finalhopes.com/nihaixia/disciple.html)
