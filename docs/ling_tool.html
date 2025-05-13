@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>随机姓名生成并复制表格到剪贴板</title>
+    <title>玲的专用小工具</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -208,14 +208,19 @@
 
         // 复制文本到剪贴板
         function copyToClipboard() {
-            const textarea = document.createElement('textarea');
-            textarea.value = `<table>${tableNode.innerHTML}</table>`;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
+            // 创建选区范围
+            const selection = window.getSelection();
+            const range = document.createRange();
 
+            // 设置选区范围为目标元素的内容
+            range.selectNodeContents(tableNode);
+
+            // 清除当前选区并设置新选区
+            selection.removeAllRanges();
+            selection.addRange(range);
+            document.execCommand('copy');
             alert('HTML 表格已复制到剪贴板。');
+            selection.removeAllRanges();
         }
 
         function generateRandomStr() {
@@ -230,9 +235,6 @@
 
             const randomStrNum = parseInt(randomStrNumNode.value);
             const randomStrs = randomStrNode.value.split('、');
-
-            console.log(randomStrNum,
-                randomStrs);
 
             const tableData = [];
             for (let i = 0; i < randomStrNum; i++) {
