@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机姓名生成并复制表格到剪贴板</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            max-width: 600px;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <h3>随机姓名</h3>
+        <input type="text" id="_generateNameNumNode" value="100" placeholder="生成数量">
+        <button onclick="generateRandomNames()">生成随机姓名</button>
+        <button onclick="copyToClipboard()">复制表格数据</button>
+    </div>
+
+    <div>
+        <h3>随机选择</h3>
+        <input type="text" id="_randomStr" placeholder="字符用中、号分隔">
+        <input type="text" id="_randomStrNum" value="10" placeholder="生成数量">
+        <button onclick="generateRandomStr()">生成随机数据</button>
+        <button onclick="generateSelectMoreRandomStr()">生成【ABC...】随机数据</button>
+        <button onclick="copyToClipboard()">复制表格数据</button>
+    </div>
+
+    <table id="_table"></table>
+
+    <script>
+        const tableNode = document.getElementById('_table');
+
+        // 常见姓氏列表
+        const surnames = [
+            "赵", "钱", "孙", "李", "周", "吴", "郑", "王", "冯", "陈",
+            "褚", "卫", "蒋", "沈", "韩", "杨", "朱", "秦", "尤", "许",
+            "何", "吕", "施", "张", "孔", "曹", "严", "华", "金", "魏",
+            "陶", "姜", "戚", "谢", "邹", "喻", "柏", "水", "窦", "章",
+            "云", "苏", "潘", "葛", "奚", "范", "彭", "郎", "鲁", "韦",
+            "昌", "马", "苗", "凤", "花", "方", "俞", "任", "袁", "柳",
+            "酆", "鲍", "史", "唐", "费", "廉", "岑", "薛", "雷", "贺",
+            "倪", "汤", "滕", "殷", "罗", "毕", "郝", "邬", "安", "常",
+            "乐", "于", "时", "傅", "皮", "卞", "齐", "康", "伍", "余",
+            "元", "卜", "顾", "孟", "平", "黄", "和", "穆", "萧", "尹",
+            "姚", "邵", "湛", "汪", "祁", "毛", "禹", "狄", "米", "贝",
+            "明", "臧", "计", "伏", "成", "戴", "谈", "宋", "茅", "庞"
+        ];
+
+        // 扩充后的男性名字列表
+        const maleNames = [
+            "伟", "强", "磊", "勇", "军", "杰", "峰", "刚", "平", "辉",
+            "鹏", "涛", "超", "亮", "明", "健", "新", "国", "飞", "波",
+            "斌", "翔", "旭", "晨", "阳", "俊", "浩", "宇", "轩", "泽",
+            "铭", "睿", "渊", "翰", "博", "霖", "梓", "航", "嘉", "俊",
+            "毅", "智", "诚", "哲", "俊", "豪", "宇", "辰", "逸", "启",
+            "贤", "良", "凯", "德", "敬", "书", "承", "佑", "景", "绍",
+            "崇", "宗", "煜", "炫", "烨", "灿", "炎", "炳", "焕", "炫",
+            "熙", "鸿", "弘", "宏", "翰", "浩", "瀚", "海", "洋", "波",
+            "涛", "澜", "淇", "浚", "泓", "渊", "涵", "润", "泽", "洲",
+            "瑞", "祥", "吉", "福", "禄", "寿", "禧", "康", "宁", "安",
+            "毅", "勇", "刚", "强", "壮", "威", "猛", "悍", "雄", "豪",
+            "俊", "朗", "清", "秀", "雅", "逸", "静", "文", "翰", "墨",
+            "书", "画", "棋", "琴", "诗", "词", "歌", "赋", "章", "篇",
+            "轩", "辕", "辙", "轮", "轴", "毂", "辂", "辇", "轲", "轼",
+            "龙", "虎", "豹", "狮", "熊", "狼", "鹰", "鹏", "雕", "鹫",
+            "麒", "麟", "凤", "凰", "龟", "蛇", "蟾", "蛙", "蝉", "蝶",
+            "松", "柏", "竹", "梅", "兰", "菊", "荷", "桂", "桃", "李",
+            "杨", "柳", "槐", "榆", "桑", "梓", "榕", "樟", "楠", "檀",
+            "山", "川", "峰", "岭", "岩", "崖", "谷", "壑", "泉", "溪",
+            "江", "河", "湖", "海", "洋", "潭", "池", "沼", "港", "湾",
+            "天", "地", "日", "月", "星", "辰", "云", "雾", "雨", "雪",
+            "雷", "电", "风", "霜", "霞", "虹", "霓", "光", "辉", "芒",
+            "春", "夏", "秋", "冬", "晨", "昏", "昼", "夜", "朝", "夕",
+            "东", "南", "西", "北", "中", "上", "下", "左", "右", "前",
+            "后", "内", "外", "里", "表", "阴", "阳", "正", "反", "奇",
+            "偶", "单", "双", "零", "整", "半", "全", "满", "缺",
+            "胜", "利", "功", "成", "业", "勋", "绩", "荣", "誉", "名",
+            "富", "贵", "财", "宝", "珠", "玉", "金", "银", "铜", "铁",
+            "石", "砂", "尘", "土", "泥", "灰", "炭", "煤", "焦", "渣",
+            "香", "甜", "苦", "辣", "酸", "咸", "鲜", "淡", "浓", "薄",
+            "高", "低", "长", "短", "宽", "窄", "厚", "薄", "大", "小",
+            "多", "少", "重", "轻", "快", "慢", "急", "缓", "强", "弱",
+            "软", "硬", "冷", "热", "温", "凉", "寒", "暑", "燥", "湿"
+        ];
+
+        // 扩充后的女性名字列表
+        const femaleNames = [
+            "芳", "娜", "敏", "静", "丽", "娟", "燕", "玲", "红", "颖",
+            "秀", "霞", "婷", "慧", "佳", "怡", "瑶", "琪", "琳", "梦",
+            "雪", "蕾", "琴", "娇", "涵", "悦", "欣", "梓", "萱", "诗",
+            "雅", "婉", "韵", "璐", "珊", "琪", "瑶", "璇", "琳", "珑",
+            "翠", "珠", "玉", "兰", "菊", "梅", "竹", "荷", "桃", "李",
+            "杏", "梨", "樱", "桂", "莲", "蓉", "薇", "莎", "菲", "萱",
+            "蕾", "蕊", "花", "蔓", "藤", "萝", "萍", "荷", "菱", "芡",
+            "云", "霞", "虹", "霓", "霜", "雪", "露", "霖", "雨", "雾",
+            "月", "星", "晨", "曦", "暮", "夕", "晓", "夜", "晴", "阴",
+            "春", "夏", "秋", "冬", "岚", "霭", "烟", "雾", "霭", "霞",
+            "碧", "翠", "青", "绿", "紫", "红", "粉", "橙", "黄", "白",
+            "兰", "芷", "蕙", "荃", "茅", "芦", "荻", "蒿", "葵", "芍",
+            "茶", "菊", "荷", "莲", "菱", "芡", "萍", "藻", "蓉", "薇",
+            "莺", "燕", "蝶", "蜂", "蝉", "蛙", "鲤", "鲫", "鲈", "鳜",
+            "凤", "凰", "鸾", "鹤", "雁", "鸿", "鸥", "鹭", "鹃", "鸠",
+            "珊", "瑚", "玳", "瑁", "珠", "玉", "金", "银", "铜", "铁",
+            "宝", "贝", "珍", "瑰", "琼", "瑶", "琪", "琳", "珑", "瑙",
+            "香", "甜", "美", "娇", "柔", "媚", "婉", "娴", "淑", "静",
+            "雅", "丽", "秀", "慧", "聪", "颖", "灵", "巧", "智", "睿",
+            "曼", "妙", "仙", "幻", "梦", "思", "念", "忆", "情", "意",
+            "欢", "喜", "乐", "笑", "悦", "欣", "怡", "畅", "爽", "快",
+            "安", "宁", "平", "和", "祥", "瑞", "吉", "福", "禄", "寿",
+            "禧", "康", "泰", "静", "雅", "幽", "闲", "逸", "舒", "适",
+            "悠", "然", "恬", "淡", "清", "纯", "真", "善", "美", "圣",
+            "柔", "软", "绵", "嫩", "娇", "弱", "瘦", "小", "轻", "薄",
+            "翠", "绿", "青", "碧", "蓝", "紫", "红", "粉", "橙", "黄",
+            "白", "黑", "灰", "银", "金", "铜", "铁", "铅", "锡", "铝",
+            "香", "甜", "苦", "辣", "酸", "咸", "鲜", "淡", "浓", "薄",
+            "高", "低", "长", "短", "宽", "窄", "厚", "薄", "大", "小",
+            "多", "少", "重", "轻", "快", "慢", "急", "缓", "强", "弱",
+            "软", "硬", "冷", "热", "温", "凉", "寒", "暑", "燥", "湿"
+        ];
+
+        // 生成随机姓名和性别
+        function generateRandomNames() {
+            const generateNameCountNode = document.getElementById('_generateNameNumNode');
+            if (!generateNameCountNode) {
+                return alert('姓名生成数量不能为空');
+            }
+
+            const NUM_NAMES = parseInt(generateNameCountNode.value);
+            const names = [];
+            for (let i = 0; i < NUM_NAMES; i++) {
+                const surname = surnames[Math.floor(Math.random() * surnames.length)];
+                const isMale = Math.random() < 0.5;
+                const gender = isMale ? '男' : '女';
+                const nameList = isMale ? maleNames : femaleNames;
+                let givenName;
+                if (Math.random() < 0.5) {
+                    givenName = nameList[Math.floor(Math.random() * nameList.length)];
+                } else {
+                    givenName = nameList[Math.floor(Math.random() * nameList.length)] +
+                        nameList[Math.floor(Math.random() * nameList.length)];
+                }
+                const fullName = surname + givenName;
+                names.push(`<tr><td>${fullName}</td><td>${gender}</td></tr>`);
+            }
+            tableNode.innerHTML = names.join('');
+        }
+
+        // 复制文本到剪贴板
+        function copyToClipboard() {
+            const textarea = document.createElement('textarea');
+            textarea.value = `<table>${tableNode.innerHTML}</table>`;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            alert('HTML 表格已复制到剪贴板。');
+        }
+
+        function generateRandomStr() {
+            const randomStrNode = document.getElementById('_randomStr');
+            const randomStrNumNode = document.getElementById('_randomStrNum');
+            if (!randomStrNode) {
+                return alert('字符不能为空');
+            }
+            if (!randomStrNumNode) {
+                return alert('随机数量不能为空');
+            }
+
+            const randomStrNum = parseInt(randomStrNumNode.value);
+            const randomStrs = randomStrNode.value.split('、');
+
+            console.log(randomStrNum,
+                randomStrs);
+
+            const tableData = [];
+            for (let i = 0; i < randomStrNum; i++) {
+                const randomStr = randomStrs[Math.floor(Math.random() * randomStrs.length)];
+                tableData.push(`<tr><td>${randomStr}</td></tr>`);
+            }
+
+            tableNode.innerHTML = tableData.join('');
+        }
+
+        function generateSelectMoreRandomStr() {
+            const randomStrNode = document.getElementById('_randomStr');
+            const randomStrNumNode = document.getElementById('_randomStrNum');
+            if (!randomStrNode) {
+                return alert('字符不能为空');
+            }
+            if (!randomStrNumNode) {
+                return alert('随机数量不能为空');
+            }
+
+            const randomStrNum = parseInt(randomStrNumNode.value);
+            const randomStrs = randomStrNode.value.split('、');
+
+            // randomStrs 中的数据市 AB、ABCD、ABCDEFG 格式 需要解析为
+
+            const tableData = [];
+            for (let i = 0; i < randomStrNum; i++) {
+                let randomStr = '';
+                for (let j = 0; j < randomStrs.length; j++) {
+                    const item = randomStrs[j];
+                    // 随机选一个字符
+                    randomStr += item[Math.floor(Math.random() * item.length)];
+
+                }
+                tableData.push(`<tr><td>${randomStr}</td></tr>`);
+            }
+
+            tableNode.innerHTML = tableData.join('');
+        }
+    </script>
+</body>
+
+</html>
