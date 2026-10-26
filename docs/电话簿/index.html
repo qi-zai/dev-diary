@@ -69,7 +69,8 @@ body.hasBanner main{padding-bottom:calc(86px + var(--sab))}
 .grp{position:sticky;top:var(--stick);z-index:20;background:var(--bg);padding:7px 3px 4px;font-size:13px;font-weight:700;
   letter-spacing:2px;color:var(--gold);border-bottom:1px solid var(--line)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:13px;margin:7px 0;overflow:hidden;box-shadow:var(--shadow)}
-.chead{display:flex;align-items:center;gap:10px;padding:9px 8px 2px 12px;cursor:pointer}
+/* 姓名行只显示信息，不响应点击；改资料一律走右边的“编辑”按钮 */
+.chead{display:flex;align-items:center;gap:10px;padding:9px 8px 2px 12px}
 .who{flex:1;min-width:0}
 .nm{font-size:17px;font-weight:600;word-break:break-all;line-height:1.3}
 .nm .tag{font-size:10.5px;font-weight:500;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 4px;margin-left:6px;vertical-align:2px}
@@ -120,6 +121,8 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 /* 触屏：所有可点的控件放大到好按的尺寸 */
 @media (pointer:coarse){
   .icobtn{width:44px}
+  /* 编辑现在是唯一的入口，手指上放大一点 */
+  .ed{padding:9px 14px;font-size:13px}
   .mini{padding:9px 10px;font-size:12.5px}
   .sheet .x{font-size:26px;padding:6px 10px}
   #clear{width:24px;height:24px;line-height:23px;font-size:17px;right:6px}
@@ -129,7 +132,7 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 /* 特别窄的手机（≤360px 逻辑宽）：编辑行里按钮再紧一点，保证号码不被截断 */
 @media (max-width:360px){
   .numrow{gap:5px;padding:8px 7px}
-  .numrow .val a{font-size:15px}
+  .numrow .val b{font-size:15px}
   .mini{padding:7px 7px;font-size:12px}
 }
 @media (min-width:760px){main{max-width:640px;margin:0 auto}header{padding-left:calc((100% - 640px)/2 + 12px)}}
@@ -156,16 +159,23 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 .area:focus{border-color:var(--navy)}
 .numrow{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 9px;margin-bottom:8px}
 .numrow.dead{opacity:.62}
-.numrow .val{flex:1 1 auto;min-width:0}
-.numrow .val a{display:block;font-size:16px;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;
-  text-decoration:none;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.numrow.dead .val a{color:var(--muted);text-decoration:line-through}
-.numrow .val i{display:block;font-style:normal;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 号码本身就是“改这里”的入口：虚线底线提示可编辑，点了原地变输入框，不再调起拨号 */
+.numrow .val{flex:1 1 auto;min-width:0;display:block;text-align:left;background:transparent;border:0;padding:0;
+  font:inherit;cursor:text;-webkit-appearance:none;appearance:none}
+.numrow .val b{display:block;font-size:16px;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;
+  letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dashed var(--line);
+  padding-bottom:1px}
+.numrow.dead .val b{color:var(--muted);text-decoration:line-through}
+.numrow .val i{display:block;font-style:normal;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .numrow .val i.prl{color:var(--gold)}
+.numinp{width:100%;padding:9px 10px;border:1px solid var(--navy);border-radius:9px;background:var(--card);color:var(--text);
+  font-size:16px;font-weight:600;letter-spacing:.2px;font-variant-numeric:tabular-nums;outline:none;font-family:inherit}
 .mini{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:9px;padding:7px 9px;font-size:12.5px;
   cursor:pointer;color:var(--muted);white-space:nowrap}
 .mini:active{transform:scale(.95)}
-.mini.warn{color:var(--danger);border-color:var(--danger)}
+/* 删除号码是破坏性操作，和设置里的红色按钮用同一套实心底 */
+.mini.warn{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
+:root[data-theme="dark"] .mini.warn{color:#33100a}
 .addnum{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
 .hint{font-size:12px;color:var(--muted);line-height:1.6;margin:8px 0 0}
 .hint b{color:var(--text)}
@@ -174,12 +184,35 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 .btn.pri{background:var(--navy);border-color:var(--navy);color:#fff}
 :root[data-theme="dark"] .btn.pri{color:#0f1420}
 .btn.dgr{color:var(--danger);border-color:var(--danger)}
+/* “删除此人”要一眼看出是危险操作：红色实心（确认弹框里的红色按钮仍是描边，别混用） */
+.btn.fillred{background:var(--danger);border-color:var(--danger);color:#fff}
+:root[data-theme="dark"] .btn.fillred{color:#33100a}
 .btn:active{transform:scale(.98)}
 .menu .it{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:9px;cursor:pointer;font-size:15.5px}
 .menu .it svg{width:19px;height:19px;color:var(--navy);flex:0 0 auto}
 .menu .it span{flex:1}
 .menu .it em{font-style:normal;font-size:12px;color:var(--muted)}
-.menu .it.dgr svg{color:var(--danger)}
+/* 数据操作：两列方格；图标和标题同一行（图标缩到 18px），说明单独一行铺满格宽 */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:2px 0 10px}
+.tile{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:7px;row-gap:2px;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 12px 10px;cursor:pointer;text-align:left}
+.tile:active{background:var(--navy-soft)}
+.tile svg{width:18px;height:18px;color:var(--navy)}
+.tile b{font-size:14.5px;font-weight:600;line-height:1.25;color:var(--text)}
+.tile em{grid-column:1/-1;font-style:normal;font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:1px}
+/* 会丢数据的两个操作：红色实心按钮，一眼看出不是普通功能 */
+.btnred{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:13px;
+  padding:13px 12px;margin-bottom:9px;background:var(--danger);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.btnred svg{width:18px;height:18px;flex:0 0 auto}
+.btnred:active{transform:scale(.99);filter:brightness(.94)}
+:root[data-theme="dark"] .btnred{color:#33100a}
+/* 开关只做长相，点整行切换（避免 label 里的 input 和行点击各切一次） */
+.sw{flex:0 0 auto;position:relative;width:44px;height:26px;border-radius:13px;background:var(--line);
+  transition:background .18s;pointer-events:none}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.28);transition:left .18s}
+.sw.on{background:var(--navy)}
+.sw.on::after{left:21px}
 
 /* ---------- 对话框 ---------- */
 #dlg{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(9,14,22,.5)}
@@ -259,13 +292,12 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
     <div class="lab">手机号</div>
     <div id="fNums"></div>
     <div class="addnum">
-      <input class="inp" id="fNew" inputmode="numeric" placeholder="手机号" autocomplete="off">
-      <button class="mini" id="fAdd">＋ 添加</button>
+      <input class="inp" id="fNew" inputmode="numeric" placeholder="再加一个手机号，保存时一起存" autocomplete="off">
     </div>
     <div class="actions">
-      <button class="btn dgr hide" id="fDel">删除此人</button>
-      <button class="btn" data-close>取消</button>
+      <button class="btn fillred hide" id="fDel">删除此人</button>
       <button class="btn pri" id="fSave">保存</button>
+      <button class="btn" data-close>取消</button>
     </div>
   </div>
 </section>
@@ -307,7 +339,7 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 <input type="file" id="file" class="hide" accept=".json,.txt,.csv,application/json,text/plain">
 
 <!-- ?v= 是版本号：和 sw.js 里的 VER 保持一致。改完代码把这两处一起换成新的 8 位串，手机刷新就会拉新版，不会被旧缓存卡住 -->
-<script src="pinyin.js?v=3f2f3b8b"></script>
-<script src="app.js?v=3f2f3b8b"></script>
+<script src="pinyin.js?v=6c4e1f98"></script>
+<script src="app.js?v=6c4e1f98"></script>
 </body>
 </html>

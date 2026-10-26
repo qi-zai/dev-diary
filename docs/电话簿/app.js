@@ -295,12 +295,14 @@ function ask(opt) {
 
 /* ================= 新增 / 编辑 ================= */
 var draft = null;
+var editIdx = -1;   /* 正在就地改号码的那一行，-1 表示没有 */
 
 function openEdit(id) {
   var p = id ? DB.people.filter(function (x) { return x.id === id; })[0] : null;
   draft = p
     ? { id: p.id, n: p.n, nums: p.nums.map(function (x) { return { d: x.d, off: x.off, pri: x.pri }; }) }
     : { id: newId(), n: '', nums: [] };
+  editIdx = -1;
   $('#editTitle').textContent = p ? '编辑 · ' + p.n : '新增联系人';
   $('#fName').value = draft.n;
   $('#fNew').value = '';
@@ -310,56 +312,95 @@ function openEdit(id) {
   if (!p) setTimeout(function () { $('#fName').focus(); }, 300);
 }
 function drawNums(flash) {
-  if (!draft.nums.length) { $('#fNums').innerHTML = '<div class="hint">还没有号码，下面填好点“＋”。</div>'; return; }
+  if (!draft.nums.length) { editIdx = -1; $('#fNums').innerHTML = '<div class="hint">还没有号码，在下面填一个，点保存时会一起存进去。</div>'; return; }
   var pi = priOf({ nums: draft.nums }), html = '';
   draft.nums.forEach(function (x, i) {
+    /* 正在改的这一行只留输入框和“完成”，把宽度全给号码 */
+    if (i === editIdx) {
+      html += '<div class="numrow editing">'
+        + '<div class="val"><input class="numinp" id="numIn" type="tel" inputmode="numeric" autocomplete="off" '
+        + 'enterkeyhint="done" value="' + esc(x.d) + '"></div>'
+        + '<button class="mini" data-num="ok' + i + '">完成</button>'
+        + '</div>';
+      return;
+    }
     var isPri = i === pi, note = [];
     if (!isPri) note.push('第 ' + (i + 1) + ' 个');
     if (x.off) note.push('已弃用');
     if (!ok11(x.d)) note.push(String(x.d).length + ' 位');
     html += '<div class="numrow' + (x.off ? ' dead' : '') + (i === flash ? ' new' : '') + '">'
-      + '<div class="val"><a href="tel:' + esc(x.d) + '" data-stop="1">' + esc(fmt(x.d)) + '</a>'
-      + (isPri ? '<i class="prl">主号</i>' : (note.length ? '<i>' + esc(note.join(' · ')) + '</i>' : '')) + '</div>'
+      + '<button class="val" data-editnum="' + i + '" aria-label="修改号码">'
+      + '<b>' + esc(fmt(x.d)) + '</b>'
+      + (isPri ? '<i class="prl">主号</i>' : (note.length ? '<i>' + esc(note.join(' · ')) + '</i>' : '')) + '</button>'
       + (isPri ? '' : '<button class="mini" data-num="up' + i + '">主号</button>')
       + '<button class="mini" data-num="off' + i + '">' + (x.off ? '恢复' : '弃用') + '</button>'
       + '<button class="mini warn" data-num="del' + i + '">删除</button>'
       + '</div>';
   });
   $('#fNums').innerHTML = html;
-  if (flash != null) {
+  var inp = $('#numIn');
+  if (inp) {
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); commitNum(); }
+      else if (e.key === 'Escape') { editIdx = -1; drawNums(); }
+    });
+    inp.addEventListener('blur', commitNum);
+    inp.focus();
+    if (inp.select) inp.select();
+    if (inp.scrollIntoView) inp.scrollIntoView({ block: 'nearest' });
+  } else if (flash != null) {
     var el = $('#fNums').children[flash];
     if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
   }
+}
+/* 就地改号：点别处（失焦）、按回车、点“完成”都算提交；空的或没变就还原 */
+function commitNum() {
+  var inp = $('#numIn');
+  if (!inp || editIdx < 0) return;
+  var i = editIdx, d = digits(inp.value), old = draft.nums[i] ? draft.nums[i].d : '';
+  editIdx = -1;
+  if (!d || d === old) { drawNums(); return; }
+  if (d.length < 5) { toast('号码太短，没有改'); drawNums(); return; }
+  if (draft.nums.some(function (x, k) { return k !== i && x.d === d; })) { toast('这个号码已经有了'); drawNums(); return; }
+  draft.nums[i].d = d;
+  drawNums(i);
 }
 function setPri(i) {
   draft.nums.forEach(function (x, k) { x.pri = k === i ? 1 : 0; });
   drawNums();
 }
 $('#fNums').addEventListener('click', function (e) {
-  if (e.target.closest('[data-stop]')) { e.stopPropagation(); return; }
+  var eb = e.target.closest('[data-editnum]');
+  if (eb) {
+    var k = parseInt(eb.dataset.editnum, 10);
+    if (editIdx >= 0 && editIdx !== k) commitNum();
+    if (editIdx !== k) { editIdx = k; drawNums(); }
+    return;
+  }
   var b = e.target.closest('[data-num]'); if (!b) return;
   var i = parseInt(b.dataset.num.replace(/^[a-z]+/, ''), 10);
   var act = b.dataset.num.replace(/[0-9]/g, '');
-  if (act === 'off') { draft.nums[i].off = draft.nums[i].off ? 0 : 1; drawNums(); }
+  if (act === 'ok') { commitNum(); }
+  else if (act === 'off') { draft.nums[i].off = draft.nums[i].off ? 0 : 1; drawNums(); }
   else if (act === 'up') { setPri(i); }
   else if (act === 'del') {
     ask({ title: '删除号码', text: '确定删除 ' + fmt(draft.nums[i].d) + ' ？', ok: '删除', danger: true })
-      .then(function (v) { if (v) { var wasPri = i === priOf({ nums: draft.nums }); draft.nums.splice(i, 1); if (wasPri && draft.nums.length) draft.nums[0].pri = 1; drawNums(); } });
+      .then(function (v) { if (v) { var wasPri = i === priOf({ nums: draft.nums }); draft.nums.splice(i, 1); if (wasPri && draft.nums.length) draft.nums[0].pri = 1; editIdx = -1; drawNums(); } });
   }
 });
-$('#fNew').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('#fAdd').click(); } });
-$('#fAdd').addEventListener('click', function () {
-  var d = digits($('#fNew').value);
-  if (d.length < 5) { toast('号码太短，请检查'); return; }
-  if (draft.nums.some(function (x) { return x.d === d; })) { toast('这个号码已经在名单里了'); return; }
-  draft.nums.push({ d: d, off: 0, pri: draft.nums.length ? 0 : 1 });
-  $('#fNew').value = '';
-  drawNums(draft.nums.length - 1);
-});
+/* 没有“添加”键了：输入框里写着的号码在点保存时一并存进去，留空就跳过 */
+$('#fNew').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('#fSave').click(); } });
 $('#fSave').addEventListener('click', function () {
+  if (editIdx >= 0) commitNum();                 /* 号码还停在输入框里时，先把它落进 draft */
   var name = $('#fName').value.trim();
+  var typed = digits($('#fNew').value);
   if (!name) { toast('请填写姓名'); $('#fName').focus(); return; }
-  if (!draft.nums.length) { toast('至少添加一个号码'); $('#fNew').focus(); return; }
+  if (typed) {
+    if (typed.length < 5) { toast('号码太短，请检查'); $('#fNew').focus(); return; }
+    if (!draft.nums.some(function (x) { return x.d === typed; })) {
+      draft.nums.push({ d: typed, off: 0, pri: draft.nums.length ? 0 : 1 });
+    }
+  } else if (!draft.nums.length) { toast('至少填一个手机号'); $('#fNew').focus(); return; }
   var same = DB.people.filter(function (p) { return p.n === name && p.id !== draft.id; });
   var go = same.length
     ? ask({ title: '本机已有同名的人', text: '已有一条「' + name + '」' + (same.length > 1 ? '等 ' + same.length + ' 条' : '')
@@ -406,8 +447,9 @@ $('#list').addEventListener('click', function (e) {
     else if (a.dataset.act === 'imppaste') openPaste();
     return;
   }
-  var card = e.target.closest('.card');
-  if (card) openEdit(card.dataset.id);
+  /* 姓名行不响应点击，改资料只能点“编辑” */
+  var ed = e.target.closest('[data-ed]');
+  if (ed) openEdit(ed.closest('.card').dataset.id);
 });
 /* 顶栏统计行：点“N 个号码位数不对”就跳过去，再点跳下一个，逐个核对 */
 var badIdx = -1;
@@ -513,27 +555,37 @@ function stats() {
 }
 function openMenu() {
   var s = stats();
+  var ic = function (d) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + d + '</svg>'; };
+  var tile = function (act, d, title, desc) {
+    return '<button class="tile" data-act="' + act + '">' + ic(d) + '<b>' + title + '</b><em>' + desc + '</em></button>';
+  };
+  var INSTALL_P = '<path d="M12 3v11M8 11l4 4 4-4M4 20h16"/>';
+  var HELP_P = '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>';
   var install = STATUS.standalone
-    ? '<div class="it" data-act="howto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>已是桌面应用</span><em>看安装说明</em></div>'
+    ? '<div class="it" data-act="howto">' + ic(HELP_P) + '<span>已是桌面应用</span><em>看安装说明</em></div>'
     : deferred
-    ? '<div class="it" data-act="install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v11M8 11l4 4 4-4M4 20h16"/></svg><span>立即安装到桌面</span><em>浏览器支持一键安装</em></div>'
-    : '<div class="it" data-act="howto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>怎么安装到桌面</span><em>' + (STATUS.secure ? '走浏览器菜单' : '得先有 HTTPS') + '</em></div>';
+    ? '<div class="it" data-act="install">' + ic(INSTALL_P) + '<span>安装到桌面</span><em>一键安装</em></div>'
+    : '<div class="it" data-act="howto">' + ic(HELP_P) + '<span>安装到桌面</span><em>用浏览器菜单</em></div>';
 
+  /* 顺序是他定的：人数概要在最上面，安装第一个操作项，深色模式第二；下面才是数据操作 */
   $('#menuBody').innerHTML =
-      '<div class="hint" style="margin:0 0 12px"><b>' + s.people + ' 人 · ' + s.nums + ' 个号码</b>'
-    + '　数据只存在这台手机里'
+      '<div class="hint" style="margin:0 0 10px"><b>' + s.people + ' 人 · ' + s.nums + ' 个号码</b>　只存在这台手机里'
     + (s.off ? '，' + s.off + ' 个已弃用' : '')
     + (s.bad ? '，' + s.bad + ' 个号码位数不对' : '') + '</div>'
     + install
-    + '<div class="hint" id="stLine" style="margin:-2px 0 12px">' + esc(statusLine()) + '</div>'
-    + '<div class="it" data-act="impfile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12V2M8 6l4-4 4 4M4 20h16"/></svg><span>导入名单（JSON 文件）</span><em>' + (s.people ? '合并进本机' : '本机还是空的') + '</em></div>'
-    + '<div class="it" data-act="impaste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/></svg><span>粘贴名单（从 Excel 复制）</span><em>姓名 + 号码</em></div>'
-    + '<div class="it" data-act="export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v11M8 11l4 4 4-4M4 20h16"/></svg><span>导出备份（JSON）</span><em>' + s.people + ' 人</em></div>'
-    + '<div class="it" data-act="theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13A8 8 0 1 1 11 4a6 6 0 0 0 9 9z"/></svg><span>深色模式</span><em>' + (ui.theme === 'dark' ? '开' : '关') + '</em></div>'
-    + '<div class="it dgr" data-act="replace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12V2M8 6l4-4 4 4M4 20h16"/></svg><span>导入名单并替换本机</span><em>丢弃本机改动</em></div>'
-    + '<div class="it dgr" data-act="wipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>清空本机全部数据</span><em>不可恢复</em></div>';
+    + '<div class="it" data-act="theme">' + ic('<path d="M20 13A8 8 0 1 1 11 4a6 6 0 0 0 9 9z"/>')
+    + '<span>深色模式</span><i class="sw' + (ui.theme === 'dark' ? ' on' : '') + '"></i></div>'
+    + '<div class="grid2">'
+    + tile('impfile', '<path d="M12 3v10M8 9l4 4 4-4M4 20h16"/>', '导入名单', 'JSON 文件，合并进本机')
+    + tile('export', '<path d="M12 14V4M8 8l4-4 4 4M4 20h16"/>', '导出名单', '存成 JSON 备份')
+    + tile('impaste', '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/>', '粘贴名单', '从 Excel 复制文本')
+    + tile('copy', '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/>', '复制名单', '全部或当前搜索结果')
+    + '</div>'
+    + '<button class="btnred" data-act="replace">' + ic('<path d="M4 8h12l-3-3M20 16H8l3 3"/>') + '导入名单并替换本机</button>'
+    + '<button class="btnred" data-act="wipe">' + ic('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>') + '清空本机全部数据</button>'
+    + '<div class="hint" id="stLine" style="margin:2px 0 4px">' + esc(statusLine()) + '</div>';
   showSheet($('#shMenu'));
-  /* 缓存数量要等 Service Worker 回话，先出面板再就地补这一行 */
+  /* 离线状态要等 Service Worker 回话，先出面板再就地补这一行 */
   refreshStatus(function () { var el = $('#stLine'); if (el) el.textContent = statusLine(); });
 }
 $('#openMenu').addEventListener('click', openMenu);
@@ -544,6 +596,7 @@ $('#menuBody').addEventListener('click', function (e) {
   else if (a === 'install') { doInstall(); }
   else if (a === 'howto') { closeSheets(); showHowTo(); }
   else if (a === 'export') { doExport(); }
+  else if (a === 'copy') { doCopy(); }
   else if (a === 'impfile') { importFile('merge'); }
   else if (a === 'replace') { importFile('replace'); }
   else if (a === 'impaste') { closeSheets(); openPaste(); }
@@ -567,6 +620,36 @@ function doExport() {
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     toast('已导出：' + name);
   } catch (err) { toast('导出失败：' + err.message); }
+}
+/* 复制名单：把当前列表（搜索状态就是搜索结果）按“姓名 + 号码”一行一条复制，
+   粘到微信里是文字、粘到 Excel 里自动分成两列 */
+function doCopy() {
+  if (!DB.people.length) { toast('本机还没有名单'); return; }
+  var list = results(), lines = [], off = 0;
+  list.forEach(function (p) {
+    p.nums.forEach(function (x) {
+      lines.push(p.n + '\t' + x.d);
+      if (x.off) off++;
+    });
+  });
+  if (!lines.length) { toast('没有可复制的号码'); return; }
+  var txt = lines.join('\n');
+  function done() {
+    closeSheets();
+    toast('已复制 ' + lines.length + ' 条' + (list.meta.q ? '（当前搜索结果）' : '') + (off ? '，含 ' + off + ' 个弃用号' : ''));
+  }
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    if (ok) done(); else toast('复制失败，请在列表里长按选择');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fallback);
+  else fallback();
 }
 /* 备份文件里的记录规整成内部结构：号码只留数字，同一人内去重，保证至少有一个主号。
    nums 既接受 [{d,off,pri}]，也接受 ['138...'] 这种裸号码数组。 */
@@ -812,11 +895,13 @@ function refreshStatus(cb) {
   }).then(function (n) { STATUS.files = n || 0; }).catch(function () {}).then(function () { if (cb) cb(STATUS); return STATUS; });
   return p;
 }
+/* 设置里只留人话：不写「安全上下文」「Service Worker」这类词 */
 function statusLine() {
-  var off = !STATUS.swApi ? '浏览器未提供' : (STATUS.swOn ? (STATUS.files ? '已缓存 ' + STATUS.files + ' 个文件' : '已注册，缓存里还没东西') : '未注册');
-  var go = STATUS.standalone ? '已作为应用运行' : (STATUS.prompt ? '可一键安装' : '无一键入口，用浏览器菜单添加');
-  return '安全上下文：' + (STATUS.secure ? 'HTTPS 可用' : '不可用（当前不是 https）')
-    + '　离线：' + off + '　安装：' + go;
+  if (!STATUS.secure) return '当前不是 https：离线缓存用不了，也装不成桌面应用';
+  if (!STATUS.swApi) return '这个浏览器不支持离线缓存';
+  if (!STATUS.swOn) return '离线缓存正在准备，稍等一下';
+  if (!STATUS.files) return '离线缓存还没存好，下次联网打开会补齐';
+  return '离线已就绪，断网也能查' + (STATUS.prompt ? '；可以一键装到桌面' : '');
 }
 
 /* 横幅只在浏览器真给了「一键安装」入口时才出现（deferred 有值）。
