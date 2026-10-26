@@ -19,15 +19,11 @@ function write(k, v) {
 
 var ui = JSON.parse(read(LS.ui) || '{}');
 var flags = JSON.parse(read(LS.flag) || '{}');
-ui.sort = SORT_KEY_OK(ui.sort) ? ui.sort : 'py';
-ui.showOff = !!ui.showOff;
 ui.theme = ui.theme === 'dark' ? 'dark' : 'light';
-
-function SORT_KEY_OK(k) { return ['py', 'pyr', 'tel', 'telr'].indexOf(k) >= 0; }
+delete ui.showOff;                    // 老版本存过这个开关，现在弃用号一直显示，按键直接丢掉
 
 var DB = { v: 1, people: [] };
 var K = {};                 // id -> 拼音键
-var firstRun = false;
 
 function load() {
   var raw = read(LS.db);
@@ -38,7 +34,6 @@ function load() {
     } catch (e) {}
   }
   DB = { v: 1, people: [] };
-  firstRun = true;
   keysAll();
   save();
 }
@@ -93,15 +88,11 @@ function badList() {
 }
 
 /* ================= 排序 / 搜索 ================= */
-var SORTS = {
-  py:   { txt: '拼音↑', fn: function (a, b) { return ka(a).a.localeCompare(ka(b).a) || a.n.localeCompare(b.n, 'zh'); } },
-  pyr:  { txt: '拼音↓', fn: function (a, b) { return ka(b).a.localeCompare(ka(a).a) || a.n.localeCompare(b.n, 'zh'); } },
-  tel:  { txt: '号码↑', fn: function (a, b) { return mainNum(a).localeCompare(mainNum(b)) || ka(a).a.localeCompare(ka(b).a); } },
-  telr: { txt: '号码↓', fn: function (a, b) { return mainNum(b).localeCompare(mainNum(a)) || ka(a).a.localeCompare(ka(b).a); } }
-};
-var SORT_ORDER = ['py', 'pyr', 'tel', 'telr'];
+/* 列表只有一种顺序：拼音 A→Z。字母分组和右侧索引条都建立在这个序上，所以不做切换按钮 */
+function BY_PY(a, b) { return ka(a).a.localeCompare(ka(b).a) || a.n.localeCompare(b.n, 'zh'); }
 
-function visible(p) { return ui.showOff ? p.nums.length > 0 : actives(p).length > 0; }
+/* 弃用号一直显示在列表里（带"已弃用"标记），没有开关：能拨的走 tel:，弃用的只展示 */
+function visible(p) { return p.nums.length > 0; }
 
 /* 保存后把这条记录拉到眼前：手机列表很长，不定位的话人就找不到刚加的号码。
    已经在屏幕里就不跳，避免列表乱晃。 */
@@ -130,7 +121,7 @@ function matchedNum(p, dig) {
   if (!dig) return null;
   for (var i = 0; i < p.nums.length; i++) {
     var x = p.nums[i];
-    if ((!x.off || ui.showOff) && x.d.indexOf(dig) >= 0) return x.d;
+    if (x.d.indexOf(dig) >= 0) return x.d;
   }
   return null;
 }
@@ -152,7 +143,7 @@ function results() {
   var q = ($('#q').value || '').trim().toLowerCase();
   var letters = q.replace(/[^a-z]/g, '');
   var dig = q.replace(/\D/g, '');
-  var list = DB.people.filter(function (p) { return match(p, q, letters, dig); }).sort(SORTS[ui.sort].fn);
+  var list = DB.people.filter(function (p) { return match(p, q, letters, dig); }).sort(BY_PY);
   list.meta = { q: q, letters: letters, dig: dig };
   return list;
 }
@@ -182,14 +173,9 @@ var focusId = null;
 var focusNums = [];   // 刚保存进去的号码，列表里闪一下，免得找不到
 function render(keepFocus) {
   var list = results(), m = list.meta;
-  var grouped = ui.sort.indexOf('py') === 0 && !m.q;
+  var grouped = !m.q;
 
   $('#clear').classList.toggle('on', !!m.q);
-  $('#sortTxt').textContent = SORTS[ui.sort].txt;
-  $('#showOff').classList.toggle('on', ui.showOff);
-
-  var numTotal = 0;
-  DB.people.forEach(function (p) { numTotal += p.nums.length; });
 
   var html = '', last = null;
   if (!list.length) {
@@ -212,8 +198,8 @@ function render(keepFocus) {
       var tags = '';
       if (p.nums.length > 1) tags += '<span class="tag">' + act.length + '/' + p.nums.length + ' 可用</span>';
       if (offN) tags += '<span class="tag off">弃用 ' + offN + '</span>';
-      /* 有几个号码列几行；“含弃用”打开时才把弃用号也铺出来 */
-      var shownNums = ui.showOff ? p.nums : act;
+      /* 有几个号码列几行，弃用号也一直铺着，行尾用"已弃用"标记区分 */
+      var shownNums = p.nums;
       var rows = '';
       for (var j = 0; j < shownNums.length; j++) {
         var x = shownNums[j];
@@ -240,7 +226,6 @@ function render(keepFocus) {
 
   $('#shown').textContent = list.length;
   $('#total').textContent = DB.people.length;
-  $('#sub').textContent = DB.people.length + ' 人 · ' + numTotal + ' 号';
   /* 位数不对的号码：统计行给个可点的入口，点一次跳一个，逐个核对 */
   var bads = badList();
   $('#badBox').innerHTML = bads.length
@@ -394,8 +379,6 @@ $('#fSave').addEventListener('click', function () {
     focusId = rec.id;
     focusNums = rec.nums.map(function (x) { return x.d; }).filter(function (d) { return had.indexOf(d) < 0; });
     closeSheets();
-    if (!visible(rec)) ui.showOff = true;          // 全标了弃用，别让记录凭空消失
-    saveUI();
     render();
     if (!revealCard(rec.id)) { $('#q').value = ''; render(); revealCard(rec.id); }
     toast(idx >= 0 ? '已保存' : '已新增 ' + name);
@@ -438,7 +421,6 @@ function jumpBad() {
   badIdx = (badIdx + 1) % bs.length;
   var t = bs[badIdx];
   if ($('#q').value) $('#q').value = '';                        // 搜索状态下目标可能被筛掉，先回到完整列表
-  if (t.off && !ui.showOff) { ui.showOff = true; saveUI(); }     // 弃用号默认不铺出来，要核对就得放开
   focusId = t.id; focusNums = [t.d];
   render(true);
   if (!revealNum(t.id, t.d)) {
@@ -498,12 +480,19 @@ railEl.addEventListener('lostpointercapture', railEnd);
 var t1;
 $('#q').addEventListener('input', function () { clearTimeout(t1); t1 = setTimeout(render, 90); });
 $('#clear').addEventListener('click', function () { $('#q').value = ''; $('#q').focus(); render(); });
-$('#sort').addEventListener('click', function () {
-  ui.sort = SORT_ORDER[(SORT_ORDER.indexOf(ui.sort) + 1) % SORT_ORDER.length];
-  saveUI(); render();
-});
-$('#showOff').addEventListener('click', function () { ui.showOff = !ui.showOff; saveUI(); render(); });
-$('#fab').addEventListener('click', function () { openEdit(null); });
+$('#addBtn').addEventListener('click', function () { openEdit(null); });
+/* ＋ 挪进顶栏后搜索框被挤窄，窄屏上占位文案会被截成半句。
+   量一下当前字体放不放得下，放不下就用短版（拼音照样能搜，只是不写进提示） */
+var PH_LONG = '搜索姓名 / 拼音 / 手机号', PH_SHORT = '搜索姓名 / 手机号';
+var phCtx = document.createElement('canvas').getContext('2d');
+function fitPlaceholder() {
+  var el = $('#q'), st = getComputedStyle(el);
+  phCtx.font = st.font;
+  var avail = el.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight) - 2;
+  el.placeholder = phCtx.measureText(PH_LONG).width <= avail ? PH_LONG : PH_SHORT;
+}
+fitPlaceholder();
+window.addEventListener('resize', fitPlaceholder);
 $('#mask').addEventListener('click', closeSheets);
 document.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) closeSheets(); });
 document.addEventListener('keydown', function (e) {
@@ -541,7 +530,6 @@ function openMenu() {
     + '<div class="it" data-act="impaste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/></svg><span>粘贴名单（从 Excel 复制）</span><em>姓名 + 号码</em></div>'
     + '<div class="it" data-act="export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v11M8 11l4 4 4-4M4 20h16"/></svg><span>导出备份（JSON）</span><em>' + s.people + ' 人</em></div>'
     + '<div class="it" data-act="theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13A8 8 0 1 1 11 4a6 6 0 0 0 9 9z"/></svg><span>深色模式</span><em>' + (ui.theme === 'dark' ? '开' : '关') + '</em></div>'
-    + '<div class="it" data-act="showoff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>列表显示弃用号码</span><em>' + (ui.showOff ? '显示中' : '已隐藏') + '</em></div>'
     + '<div class="it dgr" data-act="replace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12V2M8 6l4-4 4 4M4 20h16"/></svg><span>导入名单并替换本机</span><em>丢弃本机改动</em></div>'
     + '<div class="it dgr" data-act="wipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>清空本机全部数据</span><em>不可恢复</em></div>';
   showSheet($('#shMenu'));
@@ -553,7 +541,6 @@ $('#menuBody').addEventListener('click', function (e) {
   var it = e.target.closest('[data-act]'); if (!it) return;
   var a = it.dataset.act;
   if (a === 'theme') { ui.theme = ui.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); openMenu(); }
-  else if (a === 'showoff') { ui.showOff = !ui.showOff; saveUI(); render(); openMenu(); }
   else if (a === 'install') { doInstall(); }
   else if (a === 'howto') { closeSheets(); showHowTo(); }
   else if (a === 'export') { doExport(); }
@@ -832,26 +819,19 @@ function statusLine() {
     + '　离线：' + off + '　安装：' + go;
 }
 
-/* 横幅文案按实际能力分三种说法，任何情况都要占住这条位置，不能出现“什么都不显示” */
-function bannerTarget() {
-  var tx = $('#bannerTx'), go = $('#bannerGo');
-  go.classList.remove('hide');
-  if (deferred) { tx.textContent = '离线可用，和原生App一样从桌面打开'; go.textContent = '安装'; }
-  else if (!STATUS.secure) { tx.textContent = '当前不是 HTTPS，装不成独立应用'; go.textContent = '怎么办'; }
-  else { tx.textContent = '用浏览器菜单「添加到主屏幕 / 安装应用」'; go.textContent = '看教程'; }
-}
-function showBanner() { bannerTarget(); $('#banner').classList.add('on'); document.body.classList.add('hasBanner'); }
+/* 横幅只在浏览器真给了「一键安装」入口时才出现（deferred 有值）。
+   OPPO / 华为这类没实现 beforeinstallprompt 的浏览器从此不再占屏幕底部，想装的人去设置里看教程 */
+function showBanner() { $('#banner').classList.add('on'); document.body.classList.add('hasBanner'); }
 function hideBanner() { $('#banner').classList.remove('on'); document.body.classList.remove('hasBanner'); }
-function refreshBanner() { if (!flags.bannerNo && !STATUS.standalone) showBanner(); else if (STATUS.standalone) hideBanner(); }
+function refreshBanner() { if (deferred && !flags.bannerNo && !STATUS.standalone) showBanner(); else hideBanner(); }
 function showHowTo() {
   var ios = isIOS();
   ask({
     title: '装到手机桌面',
     html: '<ol class="steps">'
-      + '<li>' + (ios ? '用 <b>Safari</b> 打开本页（微信/QQ 内置浏览器没有这个菜单）' : '用系统自带浏览器打开本页，微信/QQ 里打开是装不成的') + '</li>'
-      + '<li>' + (ios ? '点底部 <b>分享</b> → <b>“添加到主屏幕”</b>' : '点浏览器菜单 <b>⋮ / ≡</b>，找 <b>“添加到主屏幕”“安装应用”“将网页作为应用安装”</b>（各家叫法不同）') + '</li>'
-      + '<li>确认框里点“添加”，桌面就会出现“电话簿”图标，全屏打开、断网也能用</li>'
-      + '<li>菜单里如果只有 <b>“添加书签 / 收藏”</b>，说明这台浏览器没实现网页安装，图标照样能加，只是每次从浏览器里开</li>'
+      + '<li>用系统浏览器打开本页，微信、QQ 里没有这个菜单</li>'
+      + '<li>' + (ios ? '点底部「分享」→「添加到主屏幕」' : '点菜单「⋮」→「添加到主屏幕」或「安装应用」，各家叫法不一样') + '</li>'
+      + '<li>桌面出现「电话簿」图标，全屏打开、断网也能用</li>'
       + '</ol>'
       + '<p style="margin:12px 0 0;font-size:12.5px">' + esc(statusLine()) + '</p>',
     ok: deferred ? '直接安装' : '知道了', hideCancel: true
@@ -890,23 +870,7 @@ function registerSW() {
     .catch(function (err) { setFlag('noSW', err.message); refreshStatus(); });
 }
 
-/* ================= 首次打开 ================= */
-function welcome() {
-  ask({
-    title: '户主电话簿',
-    html: '<p style="margin:0 0 10px">这个电话簿不带初始数据，名单要自己导进来；导完只存在这台手机里，不联网、别人看不到。</p>'
-      + '<ol class="steps"><li>右上角<b>设置</b> → <b>导入名单（JSON 文件）</b>选你的备份文件，或 <b>粘贴名单</b> 从 Excel 直接复制</li>'
-      + '<li>人少的话点右下角 <b>＋</b> 手动添加，一个人可以加多个手机号</li>'
-      + '<li>列表里每个号码各占一行，点号码直接拨号；点姓名或“编辑”可改名、加号、弃用</li></ol>'
-      + '<p style="margin:10px 0 0">号码位数不对的，顶部统计行会给出条数，点一下就能跳过去核对。</p>',
-    ok: STATUS.standalone ? '开始使用' : (deferred ? '下一步：一键安装' : '下一步：怎么装到桌面'), hideCancel: true
-  }).then(function () {
-    if (!STATUS.standalone) showHowTo();
-    setTimeout(runPendingAction, 350);
-  });
-}
-
-/* ================= 桌面快捷方式入口：?action=add / ?action=showoff ================= */
+/* ================= 桌面快捷方式入口：?action=add ================= */
 var pendingAction = '';
 var pendingTries = 0;
 try { pendingAction = (new URLSearchParams(location.search).get('action') || '').toLowerCase(); } catch (e) {}
@@ -917,10 +881,6 @@ function runPendingAction() {
   var a = pendingAction; pendingAction = '';
   try { history.replaceState(null, '', location.pathname); } catch (e) {}
   if (a === 'add') { openEdit(null); }
-  else if (a === 'showoff') {
-    ui.showOff = !ui.showOff; saveUI(); render();
-    toast(ui.showOff ? '已显示弃用号码' : '已隐藏弃用号码');
-  }
 }
 
 /* ================= 启动 ================= */
@@ -931,12 +891,11 @@ setSticky();
 window.addEventListener('resize', setSticky);
 window.addEventListener('load', setSticky);
 registerSW();
-/* 安装指引常驻：先按当前能力出一条，浏览器回话后再就地更新一次，不再看 firstRun / iOS 的脸色 */
+/* 安装横幅只在拿到一键安装入口时才出现，而它是异步到达的，所以浏览器回话后再刷一次 */
 refreshStatus(function () { refreshBanner(); });
 setTimeout(function () { refreshStatus(function () { refreshBanner(); }); }, 2200);
 if ('serviceWorker' in navigator && navigator.serviceWorker.addEventListener) {
   try { navigator.serviceWorker.addEventListener('controllerchange', function () { refreshStatus(); }); } catch (e) {}
 }
-if (firstRun && !flags.welcomed) { setFlag('welcomed', 1); setTimeout(welcome, 400); }
-else runPendingAction();
+runPendingAction();
 })();

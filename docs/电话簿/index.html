@@ -33,16 +33,17 @@ body{margin:0;padding:0;min-height:100vh;background:var(--bg);color:var(--text);
 button{font:inherit;color:inherit}
 .hide{display:none!important}
 
-/* ---------- 顶栏 ---------- */
-header{position:sticky;top:0;z-index:40;background:var(--bg);padding:calc(10px + var(--sat)) 12px 8px;border-bottom:1px solid var(--line)}
-.titlerow{display:flex;align-items:center;gap:8px}
-h1{margin:0;font-size:18px;letter-spacing:.4px;white-space:nowrap}
-.sub{font-size:11.5px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.3}
-.icobtn{border:1px solid var(--line);background:var(--card);border-radius:10px;width:34px;height:34px;
+/* ---------- 顶栏：一行只有 搜索框 + 新增 + 设置 ---------- */
+header{position:sticky;top:0;z-index:40;background:var(--bg);padding:calc(9px + var(--sat)) 12px 8px;border-bottom:1px solid var(--line)}
+.icobtn{border:1px solid var(--line);background:var(--card);border-radius:12px;width:34px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:0 0 auto}
 .icobtn svg{width:18px;height:18px;color:var(--muted)}
 .icobtn:active{transform:scale(.94)}
-.tools{display:flex;gap:8px;margin-top:9px;align-items:stretch}
+/* 新增是主操作，底色用主色，和旁边的设置键分开；深色主题下 --navy 是亮蓝，字要转深 */
+.icobtn.fill{background:var(--navy);border-color:var(--navy)}
+.icobtn.fill svg{color:#fff}
+:root[data-theme="dark"] .icobtn.fill svg{color:#0f1420}
+.tools{display:flex;gap:8px;align-items:stretch}
 .field{position:relative;flex:1;min-width:0}
 .field>svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--muted);pointer-events:none}
 #q{width:100%;padding:10px 32px 10px 32px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font-size:16px;outline:none}
@@ -51,18 +52,20 @@ h1{margin:0;font-size:18px;letter-spacing:.4px;white-space:nowrap}
 #clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:var(--line);color:var(--muted);
   border-radius:50%;width:19px;height:19px;font-size:15px;line-height:18px;text-align:center;padding:0;cursor:pointer;display:none}
 #clear.on{display:block}
-.chip{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:0 11px;font-size:13px;
-  display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;color:var(--muted)}
-.chip.on{border-color:var(--navy);color:var(--navy);background:var(--navy-soft)}
-.chip svg{width:14px;height:14px}
 .stat{display:flex;align-items:center;gap:10px;margin-top:7px;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .stat b{color:var(--navy);font-variant-numeric:tabular-nums}
-.stat .btnlike{border:0;background:transparent;color:var(--navy);text-decoration:underline;padding:0;font-size:12px;cursor:pointer;-webkit-appearance:none;appearance:none}
+/* 这行只做"像链接"的皮，点块靠 padding+负 margin 撑大命中区：不占额外行高，手机上好按 */
+.stat .btnlike{border:0;background:transparent;color:var(--navy);text-decoration:underline;padding:0 4px;font-size:12px;
+  cursor:pointer;line-height:1.5;margin:0 -4px;-webkit-appearance:none;appearance:none}
 /* 放在 .btnlike 后面：同为两个类的选择器，后写的才压得住，问题号码那行才显出红色 */
 .stat .warnn{color:var(--danger);font-weight:600}
 
 /* ---------- 列表 ---------- */
-main{padding:0 12px calc(78px + var(--sab))}
+/* ---------- 索引条 ---------- */
+/* 新增键已挪进顶栏，右下角没东西了，列表底部只留一点呼吸；
+   安装横幅常驻时会压在最后一行上，这时候才把底部留白顶高 */
+main{padding:0 12px calc(18px + var(--sab))}
+body.hasBanner main{padding-bottom:calc(86px + var(--sab))}
 .grp{position:sticky;top:var(--stick);z-index:20;background:var(--bg);padding:7px 3px 4px;font-size:13px;font-weight:700;
   letter-spacing:2px;color:var(--gold);border-bottom:1px solid var(--line)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:13px;margin:7px 0;overflow:hidden;box-shadow:var(--shadow)}
@@ -102,14 +105,7 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 .empty .ops{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}
 .empty .btn{flex:0 1 170px}
 
-/* ---------- 悬浮按钮 / 索引条 ---------- */
-#fab{position:fixed;right:16px;bottom:calc(20px + var(--sab));z-index:45;width:54px;height:54px;border-radius:50%;
-  border:0;background:var(--navy);color:#fff;font-size:30px;line-height:1;cursor:pointer;
-  box-shadow:0 6px 18px rgba(27,58,107,.4);display:flex;align-items:center;justify-content:center;padding:0 0 3px}
-#fab:active{transform:scale(.93)}
-:root[data-theme="dark"] #fab{color:#0f1420}
-/* 安装指引常驻，横幅会压在右下角，把 ＋ 顶上去别让按钮盖住 */
-body.hasBanner #fab{bottom:calc(92px + var(--sab))}
+/* ---------- 索引条 ---------- */
 /* 索引条：整条按 Y 坐标命中，可按住上下滑动，不要求点中某个字母 */
 #rail{position:fixed;right:3px;top:50%;transform:translateY(-50%);z-index:38;
   display:flex;flex-direction:column;width:32px;height:min(74vh,600px);
@@ -123,8 +119,7 @@ body.hasBanner #fab{bottom:calc(92px + var(--sab))}
 #rail.hide{display:none}
 /* 触屏：所有可点的控件放大到好按的尺寸 */
 @media (pointer:coarse){
-  .icobtn{width:40px;height:40px}
-  .chip{padding:0 13px;font-size:13.5px}
+  .icobtn{width:44px}
   .mini{padding:9px 10px;font-size:12.5px}
   .sheet .x{font-size:26px;padding:6px 10px}
   #clear{width:24px;height:24px;line-height:23px;font-size:17px;right:6px}
@@ -213,29 +208,28 @@ body.hasBanner #fab{bottom:calc(92px + var(--sab))}
   box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:88vw}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .steps{margin:10px 0 0;padding-left:0;list-style:none;counter-reset:s}
-.steps li{counter-increment:s;display:flex;gap:10px;margin-bottom:9px;font-size:14px;line-height:1.5;color:var(--text)}
-.steps li::before{content:counter(s);flex:0 0 auto;width:21px;height:21px;border-radius:50%;background:var(--navy);color:#fff;
-  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+/* 编号圆点用绝对定位：以前 li 是 flex，正文里每个 <b> 都变成一个弹性项，
+   中文被压到最窄宽度、一个字一行，手机上读不下去 */
+.steps li{counter-increment:s;position:relative;padding-left:31px;margin-bottom:10px;font-size:14px;line-height:1.6;color:var(--text)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:2px;width:21px;height:21px;border-radius:50%;
+  background:var(--navy);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
 :root[data-theme="dark"] .steps li::before{color:#0f1420}
 </style>
 </head>
 <body>
 <header>
-  <div class="titlerow">
-    <h1>户主电话簿</h1>
-    <div class="sub" id="sub"></div>
-    <button class="icobtn" id="openMenu" aria-label="设置">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
-    </button>
-  </div>
   <div class="tools">
     <div class="field">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="q" type="search" autocomplete="off" placeholder="搜索姓名 / 拼音 / 手机号">
+      <input id="q" type="search" autocomplete="off" placeholder="搜索姓名 / 手机号">
       <button id="clear" aria-label="清空">×</button>
     </div>
-    <button class="chip" id="sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4v16M7 20l-3-3M7 4l3 3M17 20V4M17 4l3 3M17 20l-3-3"/></svg><span id="sortTxt">拼音</span></button>
-    <button class="chip" id="showOff" title="显示已弃用号码">含弃用</button>
+    <button class="icobtn fill" id="addBtn" aria-label="新增联系人">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button class="icobtn fill" id="openMenu" aria-label="设置与数据">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+    </button>
   </div>
   <div class="stat">
     <span>共 <b id="total">0</b> 人</span>
@@ -246,11 +240,10 @@ body.hasBanner #fab{bottom:calc(92px + var(--sab))}
 
 <main id="list"></main>
 <nav id="rail" aria-label="字母索引"></nav>
-<button id="fab" aria-label="新增联系人">＋</button>
 
 <div id="banner">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16"/></svg>
-  <div class="tx"><b>装到手机桌面，离线也能用</b><span id="bannerTx">一键安装为独立应用</span></div>
+  <div class="tx"><b>装到手机桌面</b><span id="bannerTx">离线可用，点一下就装</span></div>
   <button id="bannerGo">安装</button>
   <button class="later" id="bannerNo">以后再说</button>
 </div>
@@ -314,7 +307,7 @@ body.hasBanner #fab{bottom:calc(92px + var(--sab))}
 <input type="file" id="file" class="hide" accept=".json,.txt,.csv,application/json,text/plain">
 
 <!-- ?v= 是版本号：和 sw.js 里的 VER 保持一致。改完代码把这两处一起换成新的 8 位串，手机刷新就会拉新版，不会被旧缓存卡住 -->
-<script src="pinyin.js?v=df059672"></script>
-<script src="app.js?v=df059672"></script>
+<script src="pinyin.js?v=3f2f3b8b"></script>
+<script src="app.js?v=3f2f3b8b"></script>
 </body>
 </html>

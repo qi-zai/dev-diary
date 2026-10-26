@@ -24,12 +24,6 @@
       "short_name": "新增",
       "url": "./index.html?action=add",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "显示弃用号码",
-      "short_name": "弃用号",
-      "url": "./index.html?action=showoff",
-      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
