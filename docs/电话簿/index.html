@@ -108,6 +108,8 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
   box-shadow:0 6px 18px rgba(27,58,107,.4);display:flex;align-items:center;justify-content:center;padding:0 0 3px}
 #fab:active{transform:scale(.93)}
 :root[data-theme="dark"] #fab{color:#0f1420}
+/* 安装指引常驻，横幅会压在右下角，把 ＋ 顶上去别让按钮盖住 */
+body.hasBanner #fab{bottom:calc(92px + var(--sab))}
 /* 索引条：整条按 Y 坐标命中，可按住上下滑动，不要求点中某个字母 */
 #rail{position:fixed;right:3px;top:50%;transform:translateY(-50%);z-index:38;
   display:flex;flex-direction:column;width:32px;height:min(74vh,600px);
@@ -312,7 +314,7 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 <input type="file" id="file" class="hide" accept=".json,.txt,.csv,application/json,text/plain">
 
 <!-- ?v= 是版本号：和 sw.js 里的 VER 保持一致。改完代码把这两处一起换成新的 8 位串，手机刷新就会拉新版，不会被旧缓存卡住 -->
-<script src="pinyin.js?v=4cff9666"></script>
-<script src="app.js?v=4cff9666"></script>
+<script src="pinyin.js?v=df059672"></script>
+<script src="app.js?v=df059672"></script>
 </body>
 </html>

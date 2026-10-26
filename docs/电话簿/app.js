@@ -524,10 +524,11 @@ function stats() {
 }
 function openMenu() {
   var s = stats();
-  var install = deferred
-    ? '<div class="it" data-act="install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v11M8 11l4 4 4-4M4 20h16"/></svg><span>立即安装到桌面</span><em>推荐</em></div>'
-    : (isStandalone() ? '<div class="hint" style="margin:0 0 10px">当前已作为桌面应用运行。</div>'
-      : '<div class="it" data-act="howto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>怎么安装到桌面</span><em>' + (window.isSecureContext ? '用浏览器菜单' : '需 HTTPS') + '</em></div>');
+  var install = STATUS.standalone
+    ? '<div class="it" data-act="howto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>已是桌面应用</span><em>看安装说明</em></div>'
+    : deferred
+    ? '<div class="it" data-act="install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v11M8 11l4 4 4-4M4 20h16"/></svg><span>立即安装到桌面</span><em>浏览器支持一键安装</em></div>'
+    : '<div class="it" data-act="howto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>怎么安装到桌面</span><em>' + (STATUS.secure ? '走浏览器菜单' : '得先有 HTTPS') + '</em></div>';
 
   $('#menuBody').innerHTML =
       '<div class="hint" style="margin:0 0 12px"><b>' + s.people + ' 人 · ' + s.nums + ' 个号码</b>'
@@ -535,6 +536,7 @@ function openMenu() {
     + (s.off ? '，' + s.off + ' 个已弃用' : '')
     + (s.bad ? '，' + s.bad + ' 个号码位数不对' : '') + '</div>'
     + install
+    + '<div class="hint" id="stLine" style="margin:-2px 0 12px">' + esc(statusLine()) + '</div>'
     + '<div class="it" data-act="impfile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12V2M8 6l4-4 4 4M4 20h16"/></svg><span>导入名单（JSON 文件）</span><em>' + (s.people ? '合并进本机' : '本机还是空的') + '</em></div>'
     + '<div class="it" data-act="impaste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/></svg><span>粘贴名单（从 Excel 复制）</span><em>姓名 + 号码</em></div>'
     + '<div class="it" data-act="export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v11M8 11l4 4 4-4M4 20h16"/></svg><span>导出备份（JSON）</span><em>' + s.people + ' 人</em></div>'
@@ -543,6 +545,8 @@ function openMenu() {
     + '<div class="it dgr" data-act="replace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12V2M8 6l4-4 4 4M4 20h16"/></svg><span>导入名单并替换本机</span><em>丢弃本机改动</em></div>'
     + '<div class="it dgr" data-act="wipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>清空本机全部数据</span><em>不可恢复</em></div>';
   showSheet($('#shMenu'));
+  /* 缓存数量要等 Service Worker 回话，先出面板再就地补这一行 */
+  refreshStatus(function () { var el = $('#stLine'); if (el) el.textContent = statusLine(); });
 }
 $('#openMenu').addEventListener('click', openMenu);
 $('#menuBody').addEventListener('click', function (e) {
@@ -792,21 +796,66 @@ function isStandalone() {
 }
 function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
 
-function bannerTarget() {
-  if (deferred) { $('#bannerTx').textContent = '离线可用，和原生App一样从桌面打开'; $('#bannerGo').classList.remove('hide'); }
-  else { $('#bannerTx').textContent = isIOS() ? '用 Safari 的“分享 → 添加到主屏幕”' : '需 HTTPS 访问才能一键安装'; $('#bannerGo').textContent = '看教程'; }
+/* 本机能力快照：不猜，直接从浏览器要答案，设置里那行状态就是这个对象的输出 */
+var STATUS = { secure: !!window.isSecureContext, swApi: ('serviceWorker' in navigator), swOn: false, files: 0, prompt: false, standalone: false };
+/* 数离线缓存里的文件数。全局 caches 各家内核都有，registration.caches 反而不少版本没实现，所以优先前者 */
+function cacheCount() {
+  var keysP = null;
+  try { if (window.caches && typeof caches.keys === 'function') keysP = caches.keys(); } catch (e) { keysP = null; }
+  if (!keysP) {
+    if (!navigator.serviceWorker.getRegistration) return Promise.resolve(0);
+    keysP = navigator.serviceWorker.getRegistration().then(function (r) { return (r && r.caches && r.caches.keys) ? r.caches.keys() : []; });
+  }
+  return keysP.then(function (ks) {
+    ks = (ks || []).filter(function (k) { return k.indexOf('huzhu-phonebook-') === 0; });
+    if (!ks.length) return 0;
+    var last = ks[ks.length - 1], openP = null;
+    try { if (window.caches && caches.open) openP = caches.open(last); } catch (e) { openP = null; }
+    if (!openP) return 0;
+    return openP.then(function (c) { return c.keys(); }).then(function (list) { return list ? list.length : 0; });
+  }).catch(function () { return 0; });
 }
-function showBanner() { bannerTarget(); $('#banner').classList.add('on'); }
-function hideBanner() { $('#banner').classList.remove('on'); }
+function refreshStatus(cb) {
+  STATUS.prompt = !!deferred;
+  STATUS.standalone = isStandalone();
+  if (!STATUS.swApi || !navigator.serviceWorker.getRegistration) { if (cb) cb(STATUS); return Promise.resolve(STATUS); }
+  var p = navigator.serviceWorker.getRegistration().then(function (r) {
+    STATUS.swOn = !!(r && (r.active || r.installing || r.waiting));
+    return cacheCount();
+  }).then(function (n) { STATUS.files = n || 0; }).catch(function () {}).then(function () { if (cb) cb(STATUS); return STATUS; });
+  return p;
+}
+function statusLine() {
+  var off = !STATUS.swApi ? '浏览器未提供' : (STATUS.swOn ? (STATUS.files ? '已缓存 ' + STATUS.files + ' 个文件' : '已注册，缓存里还没东西') : '未注册');
+  var go = STATUS.standalone ? '已作为应用运行' : (STATUS.prompt ? '可一键安装' : '无一键入口，用浏览器菜单添加');
+  return '安全上下文：' + (STATUS.secure ? 'HTTPS 可用' : '不可用（当前不是 https）')
+    + '　离线：' + off + '　安装：' + go;
+}
+
+/* 横幅文案按实际能力分三种说法，任何情况都要占住这条位置，不能出现“什么都不显示” */
+function bannerTarget() {
+  var tx = $('#bannerTx'), go = $('#bannerGo');
+  go.classList.remove('hide');
+  if (deferred) { tx.textContent = '离线可用，和原生App一样从桌面打开'; go.textContent = '安装'; }
+  else if (!STATUS.secure) { tx.textContent = '当前不是 HTTPS，装不成独立应用'; go.textContent = '怎么办'; }
+  else { tx.textContent = '用浏览器菜单「添加到主屏幕 / 安装应用」'; go.textContent = '看教程'; }
+}
+function showBanner() { bannerTarget(); $('#banner').classList.add('on'); document.body.classList.add('hasBanner'); }
+function hideBanner() { $('#banner').classList.remove('on'); document.body.classList.remove('hasBanner'); }
+function refreshBanner() { if (!flags.bannerNo && !STATUS.standalone) showBanner(); else if (STATUS.standalone) hideBanner(); }
 function showHowTo() {
   var ios = isIOS();
   ask({
-    title: '安装到手机桌面',
-    html: '<ol class="steps"><li>' + (ios ? '用 <b>Safari</b> 打开本页（微信/QQ 内置浏览器不行）' : '点浏览器右上角的 <b>菜单 ⋮</b>') + '</li>'
-      + '<li>' + (ios ? '点 <b>分享</b> 图标，选 <b>“添加到主屏幕”</b>' : '选 <b>“添加到主屏幕 / 安装应用”</b>') + '</li>'
-      + '<li>回到桌面点“电话簿”图标打开，即可全屏离线使用</li></ol>',
-    ok: '知道了', hideCancel: true
-  });
+    title: '装到手机桌面',
+    html: '<ol class="steps">'
+      + '<li>' + (ios ? '用 <b>Safari</b> 打开本页（微信/QQ 内置浏览器没有这个菜单）' : '用系统自带浏览器打开本页，微信/QQ 里打开是装不成的') + '</li>'
+      + '<li>' + (ios ? '点底部 <b>分享</b> → <b>“添加到主屏幕”</b>' : '点浏览器菜单 <b>⋮ / ≡</b>，找 <b>“添加到主屏幕”“安装应用”“将网页作为应用安装”</b>（各家叫法不同）') + '</li>'
+      + '<li>确认框里点“添加”，桌面就会出现“电话簿”图标，全屏打开、断网也能用</li>'
+      + '<li>菜单里如果只有 <b>“添加书签 / 收藏”</b>，说明这台浏览器没实现网页安装，图标照样能加，只是每次从浏览器里开</li>'
+      + '</ol>'
+      + '<p style="margin:12px 0 0;font-size:12.5px">' + esc(statusLine()) + '</p>',
+    ok: deferred ? '直接安装' : '知道了', hideCancel: true
+  }).then(function (v) { if (v && deferred) doInstall(); });
 }
 function doInstall() {
   if (!deferred) { showHowTo(); return; }
@@ -814,27 +863,31 @@ function doInstall() {
   if (deferred.userChoice) {
     deferred.userChoice.then(function (r) {
       if (r && r.outcome === 'accepted') { hideBanner(); setFlag('bannerNo', 1); toast('已安装，去桌面找“电话簿”'); }
-      else { setFlag('bannerNo', 1); hideBanner(); }
+      else { setFlag('bannerNo', 1); hideBanner(); toast('没装也没事，设置里随时能再来'); }
       deferred = null;
+      refreshStatus();
     });
   }
 }
 window.addEventListener('beforeinstallprompt', function (e) {
   e.preventDefault();
   deferred = e;
-  if (!flags.bannerNo && !isStandalone()) showBanner();
+  refreshStatus(function () { refreshBanner(); });
 });
 window.addEventListener('appinstalled', function () {
   hideBanner(); setFlag('installed', 1); deferred = null; toast('已安装到桌面');
+  refreshStatus(function () { $('#menuBody').innerHTML && openMenu(); });
 });
 $('#bannerGo').addEventListener('click', doInstall);
 $('#bannerNo').addEventListener('click', function () { setFlag('bannerNo', 1); hideBanner(); });
 
 /* ================= Service Worker ================= */
 function registerSW() {
-  if (!('serviceWorker' in navigator)) { setFlag('noSW', '浏览器不支持'); return; }
+  if (!('serviceWorker' in navigator)) { setFlag('noSW', '浏览器未提供离线接口'); return; }
   if (!/^https?:$/.test(location.protocol)) { setFlag('noSW', '本地文件方式打开，无法启用离线'); return; }
-  navigator.serviceWorker.register('sw.js').catch(function (err) { setFlag('noSW', err.message); });
+  navigator.serviceWorker.register('sw.js')
+    .then(function () { refreshStatus(); })
+    .catch(function (err) { setFlag('noSW', err.message); refreshStatus(); });
 }
 
 /* ================= 首次打开 ================= */
@@ -846,9 +899,9 @@ function welcome() {
       + '<li>人少的话点右下角 <b>＋</b> 手动添加，一个人可以加多个手机号</li>'
       + '<li>列表里每个号码各占一行，点号码直接拨号；点姓名或“编辑”可改名、加号、弃用</li></ol>'
       + '<p style="margin:10px 0 0">号码位数不对的，顶部统计行会给出条数，点一下就能跳过去核对。</p>',
-    ok: deferred || isIOS() ? '下一步：装到桌面' : '开始使用', hideCancel: true
+    ok: STATUS.standalone ? '开始使用' : (deferred ? '下一步：一键安装' : '下一步：怎么装到桌面'), hideCancel: true
   }).then(function () {
-    if (deferred || isIOS()) showHowTo();
+    if (!STATUS.standalone) showHowTo();
     setTimeout(runPendingAction, 350);
   });
 }
@@ -878,9 +931,11 @@ setSticky();
 window.addEventListener('resize', setSticky);
 window.addEventListener('load', setSticky);
 registerSW();
-if (!flags.bannerNo && !isStandalone() && !firstRun) {
-  if (deferred) showBanner();
-  else if (isIOS()) showBanner();
+/* 安装指引常驻：先按当前能力出一条，浏览器回话后再就地更新一次，不再看 firstRun / iOS 的脸色 */
+refreshStatus(function () { refreshBanner(); });
+setTimeout(function () { refreshStatus(function () { refreshBanner(); }); }, 2200);
+if ('serviceWorker' in navigator && navigator.serviceWorker.addEventListener) {
+  try { navigator.serviceWorker.addEventListener('controllerchange', function () { refreshStatus(); }); } catch (e) {}
 }
 if (firstRun && !flags.welcomed) { setFlag('welcomed', 1); setTimeout(welcome, 400); }
 else runPendingAction();
