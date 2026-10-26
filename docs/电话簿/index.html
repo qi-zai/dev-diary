@@ -21,7 +21,7 @@
   --stick:0px; --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
 }
 :root[data-theme="dark"]{
-  --navy:#8ab4f8; --navy-2:#6d9be8; --navy-soft:#1e2a3d; --gold:#e0b64a; --danger:#ff8a7a;
+  --navy:#8ab4f8; --navy-2:#6d9be8; --navy-soft:#1e2a3d; --gold:#e0b64a; --danger:#c0392b;
   --bg:#12161d; --card:#1b212c; --line:#2b3444; --text:#e8edf5; --muted:#93a0b4; --hit:#54450f;
   --shadow:0 1px 3px rgba(0,0,0,.4);
 }
@@ -192,20 +192,23 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 .menu .it svg{width:19px;height:19px;color:var(--navy);flex:0 0 auto}
 .menu .it span{flex:1}
 .menu .it em{font-style:normal;font-size:12px;color:var(--muted)}
-/* 数据操作：两列方格；图标和标题同一行（图标缩到 18px），说明单独一行铺满格宽 */
+/* 数据操作：两列方格；图标和标题同一行（图标 18px），整块内容居中，说明单独一行 */
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:2px 0 10px}
-.tile{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:7px;row-gap:2px;
-  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 12px 10px;cursor:pointer;text-align:left}
+.tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--card);
+  border:1px solid var(--line);border-radius:14px;padding:10px 8px;cursor:pointer;text-align:center}
 .tile:active{background:var(--navy-soft)}
-.tile svg{width:18px;height:18px;color:var(--navy)}
+.tile .tr{display:flex;align-items:center;gap:6px}
+.tile svg{width:18px;height:18px;color:var(--navy);flex:0 0 auto}
 .tile b{font-size:14.5px;font-weight:600;line-height:1.25;color:var(--text)}
-.tile em{grid-column:1/-1;font-style:normal;font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:1px}
-/* 会丢数据的两个操作：红色实心按钮，一眼看出不是普通功能 */
-.btnred{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:13px;
+.tile em{font-style:normal;font-size:11.5px;color:var(--muted);line-height:1.35}
+/* 会丢数据的两个操作：替换=黄色（会覆盖本机名单，提醒别按错），清空=红色实心 */
+.btnred{display:flex;align-items:center;justify-content:center;width:100%;border:0;border-radius:13px;
   padding:13px 12px;margin-bottom:9px;background:var(--danger);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
-.btnred svg{width:18px;height:18px;flex:0 0 auto}
 .btnred:active{transform:scale(.99);filter:brightness(.94)}
-:root[data-theme="dark"] .btnred{color:#33100a}
+.btnwarn{display:flex;align-items:center;justify-content:center;width:100%;border:0;border-radius:13px;
+  padding:13px 12px;margin-bottom:9px;background:#c49300;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.btnwarn:active{transform:scale(.99);filter:brightness(.96)}
+:root[data-theme="dark"] .btnwarn{color:#fff}
 /* 开关只做长相，点整行切换（避免 label 里的 input 和行点击各切一次） */
 .sw{flex:0 0 auto;position:relative;width:44px;height:26px;border-radius:13px;background:var(--line);
   transition:background .18s;pointer-events:none}
@@ -339,7 +342,7 @@ mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
 <input type="file" id="file" class="hide" accept=".json,.txt,.csv,application/json,text/plain">
 
 <!-- ?v= 是版本号：和 sw.js 里的 VER 保持一致。改完代码把这两处一起换成新的 8 位串，手机刷新就会拉新版，不会被旧缓存卡住 -->
-<script src="pinyin.js?v=6c4e1f98"></script>
-<script src="app.js?v=6c4e1f98"></script>
+<script src="pinyin.js?v=65c59aa8"></script>
+<script src="app.js?v=65c59aa8"></script>
 </body>
 </html>

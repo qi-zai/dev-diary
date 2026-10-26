@@ -1,7 +1,7 @@
 /* 户主电话簿 Service Worker —— 全量离线缓存。
    改了 app.js / pinyin.js / index.html 之后，把下面的 VER 和 index.html 里的 ?v= 改成同一串新值（8 位即可），
    旧缓存会随版本号变化自动清掉，手机刷新就是新版 */
-const VER = '6c4e1f98';
+const VER = '65c59aa8';
 const CACHE = 'huzhu-phonebook-' + VER;
 const CORE = [
   './',

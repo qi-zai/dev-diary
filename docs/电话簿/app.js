@@ -557,7 +557,8 @@ function openMenu() {
   var s = stats();
   var ic = function (d) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + d + '</svg>'; };
   var tile = function (act, d, title, desc) {
-    return '<button class="tile" data-act="' + act + '">' + ic(d) + '<b>' + title + '</b><em>' + desc + '</em></button>';
+    return '<button class="tile" data-act="' + act + '"><span class="tr">' + ic(d) + '<b>' + title + '</b></span>'
+      + '<em>' + desc + '</em></button>';
   };
   var INSTALL_P = '<path d="M12 3v11M8 11l4 4 4-4M4 20h16"/>';
   var HELP_P = '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>';
@@ -576,17 +577,14 @@ function openMenu() {
     + '<div class="it" data-act="theme">' + ic('<path d="M20 13A8 8 0 1 1 11 4a6 6 0 0 0 9 9z"/>')
     + '<span>深色模式</span><i class="sw' + (ui.theme === 'dark' ? ' on' : '') + '"></i></div>'
     + '<div class="grid2">'
+    + tile('impaste', '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/>', '粘贴名单', '从 Excel 复制文本存储')
+    + tile('copy', '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/>', '复制名单', '全部或当前搜索结果')
     + tile('impfile', '<path d="M12 3v10M8 9l4 4 4-4M4 20h16"/>', '导入名单', 'JSON 文件，合并进本机')
     + tile('export', '<path d="M12 14V4M8 8l4-4 4 4M4 20h16"/>', '导出名单', '存成 JSON 备份')
-    + tile('impaste', '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/>', '粘贴名单', '从 Excel 复制文本')
-    + tile('copy', '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/>', '复制名单', '全部或当前搜索结果')
     + '</div>'
-    + '<button class="btnred" data-act="replace">' + ic('<path d="M4 8h12l-3-3M20 16H8l3 3"/>') + '导入名单并替换本机</button>'
-    + '<button class="btnred" data-act="wipe">' + ic('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>') + '清空本机全部数据</button>'
-    + '<div class="hint" id="stLine" style="margin:2px 0 4px">' + esc(statusLine()) + '</div>';
+    + '<button class="btnwarn" data-act="replace">导入名单并替换本机</button>'
+    + '<button class="btnred" data-act="wipe">清空本机全部数据</button>';
   showSheet($('#shMenu'));
-  /* 离线状态要等 Service Worker 回话，先出面板再就地补这一行 */
-  refreshStatus(function () { var el = $('#stLine'); if (el) el.textContent = statusLine(); });
 }
 $('#openMenu').addEventListener('click', openMenu);
 $('#menuBody').addEventListener('click', function (e) {
