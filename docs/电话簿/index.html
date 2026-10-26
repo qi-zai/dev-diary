@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="电话簿">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<title>户主电话簿</title>
+<style>
+:root{
+  --navy:#1b3a6b; --navy-2:#2c5291; --navy-soft:#eaf0f9; --gold:#a8790a; --danger:#c0392b;
+  --bg:#ffffff; --card:#ffffff; --line:#e2e7ee; --text:#1f2733; --muted:#7b8698; --hit:#ffe9a8;
+  --shadow:0 1px 3px rgba(17,26,40,.07);
+  --stick:0px; --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+:root[data-theme="dark"]{
+  --navy:#8ab4f8; --navy-2:#6d9be8; --navy-soft:#1e2a3d; --gold:#e0b64a; --danger:#ff8a7a;
+  --bg:#12161d; --card:#1b212c; --line:#2b3444; --text:#e8edf5; --muted:#93a0b4; --hit:#54450f;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* 注意：body 不能写 height:100% —— 那会把吸顶 header 的约束盒限死在一屏内，滚过一屏后搜索栏就跟着列表滚走了 */
+html{-webkit-text-size-adjust:100%}
+body{margin:0;padding:0;min-height:100vh;background:var(--bg);color:var(--text);overscroll-behavior-y:none;
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button{font:inherit;color:inherit}
+.hide{display:none!important}
+
+/* ---------- 顶栏 ---------- */
+header{position:sticky;top:0;z-index:40;background:var(--bg);padding:calc(10px + var(--sat)) 12px 8px;border-bottom:1px solid var(--line)}
+.titlerow{display:flex;align-items:center;gap:8px}
+h1{margin:0;font-size:18px;letter-spacing:.4px;white-space:nowrap}
+.sub{font-size:11.5px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.3}
+.icobtn{border:1px solid var(--line);background:var(--card);border-radius:10px;width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:0 0 auto}
+.icobtn svg{width:18px;height:18px;color:var(--muted)}
+.icobtn:active{transform:scale(.94)}
+.tools{display:flex;gap:8px;margin-top:9px;align-items:stretch}
+.field{position:relative;flex:1;min-width:0}
+.field>svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--muted);pointer-events:none}
+#q{width:100%;padding:10px 32px 10px 32px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font-size:16px;outline:none}
+#q::-webkit-search-cancel-button{display:none}
+#q:focus{border-color:var(--navy)}
+#clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:var(--line);color:var(--muted);
+  border-radius:50%;width:19px;height:19px;font-size:15px;line-height:18px;text-align:center;padding:0;cursor:pointer;display:none}
+#clear.on{display:block}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:0 11px;font-size:13px;
+  display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.chip.on{border-color:var(--navy);color:var(--navy);background:var(--navy-soft)}
+.chip svg{width:14px;height:14px}
+.stat{display:flex;align-items:center;gap:10px;margin-top:7px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.stat b{color:var(--navy);font-variant-numeric:tabular-nums}
+.stat .btnlike{border:0;background:transparent;color:var(--navy);text-decoration:underline;padding:0;font-size:12px;cursor:pointer;-webkit-appearance:none;appearance:none}
+/* 放在 .btnlike 后面：同为两个类的选择器，后写的才压得住，问题号码那行才显出红色 */
+.stat .warnn{color:var(--danger);font-weight:600}
+
+/* ---------- 列表 ---------- */
+main{padding:0 12px calc(78px + var(--sab))}
+.grp{position:sticky;top:var(--stick);z-index:20;background:var(--bg);padding:7px 3px 4px;font-size:13px;font-weight:700;
+  letter-spacing:2px;color:var(--gold);border-bottom:1px solid var(--line)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:13px;margin:7px 0;overflow:hidden;box-shadow:var(--shadow)}
+.chead{display:flex;align-items:center;gap:10px;padding:9px 8px 2px 12px;cursor:pointer}
+.who{flex:1;min-width:0}
+.nm{font-size:17px;font-weight:600;word-break:break-all;line-height:1.3}
+.nm .tag{font-size:10.5px;font-weight:500;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 4px;margin-left:6px;vertical-align:2px}
+.nm .tag.off{color:#b3261e;background:#fde8e7;border-color:#f6c6c2}
+.nm .tag.warn{color:var(--gold);border-color:var(--gold)}
+:root[data-theme="dark"] .nm .tag.off{color:#ffb4ab;background:#3c1e1b;border-color:#5a2f2a}
+.py{font-size:11.5px;color:var(--muted);letter-spacing:.3px;margin-top:1px}
+.ed{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:9px;
+  padding:7px 12px;font-size:12.5px;cursor:pointer;line-height:1.2}
+.ed:active{transform:scale(.95);background:var(--navy-soft);color:var(--navy)}
+.nums{padding:3px 6px 7px}
+/* 一个号码一行，整行可点：能拨的走 tel:，弃用的只展示 */
+.n{display:flex;align-items:center;gap:9px;padding:11px 8px;margin:1px 0;border-radius:10px;text-decoration:none;
+  color:var(--navy);font-size:17px;font-variant-numeric:tabular-nums;letter-spacing:.4px;line-height:1.2}
+.n:active{background:var(--navy-soft)}
+.n .ic{width:17px;height:17px;flex:0 0 auto;color:var(--muted)}
+.n b{font-weight:600;letter-spacing:.6px}
+.n i{font-style:normal;font-size:10.5px;font-weight:500;color:var(--muted);border:1px solid var(--line);
+  border-radius:5px;padding:1px 5px;line-height:1.4;white-space:nowrap}
+.n i.pri{color:var(--gold);border-color:var(--gold)}
+/* 位数不对的号码用填充标签，列表里一眼就能挑出来 */
+.n i.warn{color:#fff;background:var(--danger);border-color:var(--danger);font-weight:600}
+:root[data-theme="dark"] .n i.warn{color:#33100a}
+.n i.off{color:#b3261e;background:#fde8e7;border-color:#f6c6c2}
+:root[data-theme="dark"] .n i.off{color:#ffb4ab;background:#3c1e1b;border-color:#5a2f2a}
+.n.off{color:var(--muted)}
+.n.off b{text-decoration:line-through;font-weight:400}
+.n.new,.numrow.new{animation:nflash 1.9s ease-out}
+@keyframes nflash{0%,55%{background:var(--hit);box-shadow:inset 0 0 0 2px var(--gold)}100%{background:transparent;box-shadow:none}}
+mark{background:var(--hit);color:inherit;border-radius:3px;padding:0 1px}
+.empty{padding:44px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;font-size:17px;color:var(--text);margin-bottom:6px}
+.empty .ops{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.empty .btn{flex:0 1 170px}
+
+/* ---------- 悬浮按钮 / 索引条 ---------- */
+#fab{position:fixed;right:16px;bottom:calc(20px + var(--sab));z-index:45;width:54px;height:54px;border-radius:50%;
+  border:0;background:var(--navy);color:#fff;font-size:30px;line-height:1;cursor:pointer;
+  box-shadow:0 6px 18px rgba(27,58,107,.4);display:flex;align-items:center;justify-content:center;padding:0 0 3px}
+#fab:active{transform:scale(.93)}
+:root[data-theme="dark"] #fab{color:#0f1420}
+/* 索引条：整条按 Y 坐标命中，可按住上下滑动，不要求点中某个字母 */
+#rail{position:fixed;right:3px;top:50%;transform:translateY(-50%);z-index:38;
+  display:flex;flex-direction:column;width:32px;height:min(74vh,600px);
+  background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 1px;
+  box-shadow:0 3px 14px rgba(0,0,0,.12);touch-action:none;-webkit-user-select:none;user-select:none}
+#rail button{flex:1 1 0;min-height:0;width:100%;border:0;background:transparent;color:var(--muted);
+  font-size:12.5px;font-weight:700;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:9px;pointer-events:none}
+#rail button.off{opacity:.22}
+#rail button.hot{background:var(--navy);color:#fff;font-size:14px}
+#rail.hide{display:none}
+/* 触屏：所有可点的控件放大到好按的尺寸 */
+@media (pointer:coarse){
+  .icobtn{width:40px;height:40px}
+  .chip{padding:0 13px;font-size:13.5px}
+  .mini{padding:9px 10px;font-size:12.5px}
+  .sheet .x{font-size:26px;padding:6px 10px}
+  #clear{width:24px;height:24px;line-height:23px;font-size:17px;right:6px}
+}
+/* 窄屏：列表右侧让开索引条的宽度，别让号码被压住 */
+@media (max-width:760px){main{padding-right:44px}}
+/* 特别窄的手机（≤360px 逻辑宽）：编辑行里按钮再紧一点，保证号码不被截断 */
+@media (max-width:360px){
+  .numrow{gap:5px;padding:8px 7px}
+  .numrow .val a{font-size:15px}
+  .mini{padding:7px 7px;font-size:12px}
+}
+@media (min-width:760px){main{max-width:640px;margin:0 auto}header{padding-left:calc((100% - 640px)/2 + 12px)}}
+
+/* ---------- 弹层 ---------- */
+#mask{position:fixed;inset:0;background:rgba(9,14,22,.45);z-index:60;opacity:0;pointer-events:none;transition:.2s}
+#mask.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--bg);border-radius:20px 20px 0 0;
+  transform:translateY(102%);transition:transform .26s cubic-bezier(.3,.8,.3,1);max-height:88vh;display:flex;flex-direction:column;
+  padding-bottom:var(--sab)}
+.sheet.on{transform:translateY(0)}
+.sheet .hd{display:flex;align-items:center;gap:8px;padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+.sheet .hd h2{margin:0;font-size:16px;flex:1}
+.sheet .bd{overflow:auto;padding:12px 16px 16px;-webkit-overflow-scrolling:touch}
+.sheet .x{border:0;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:2px 6px}
+@media (min-width:600px){.sheet{left:50%;right:auto;width:440px;transform:translate(-50%,102%);border-radius:20px;bottom:16px}
+  .sheet.on{transform:translate(-50%,0)}}
+
+.lab{font-size:12px;color:var(--muted);margin:12px 0 5px;letter-spacing:.5px}
+.inp{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font-size:16px;outline:none}
+.inp:focus{border-color:var(--navy)}
+.area{width:100%;min-height:170px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--card);
+  color:var(--text);font-size:16px;font-family:inherit;line-height:1.5;outline:none;resize:vertical;-webkit-text-size-adjust:100%}
+.area:focus{border-color:var(--navy)}
+.numrow{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 9px;margin-bottom:8px}
+.numrow.dead{opacity:.62}
+.numrow .val{flex:1 1 auto;min-width:0}
+.numrow .val a{display:block;font-size:16px;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;
+  text-decoration:none;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.numrow.dead .val a{color:var(--muted);text-decoration:line-through}
+.numrow .val i{display:block;font-style:normal;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.numrow .val i.prl{color:var(--gold)}
+.mini{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:9px;padding:7px 9px;font-size:12.5px;
+  cursor:pointer;color:var(--muted);white-space:nowrap}
+.mini:active{transform:scale(.95)}
+.mini.warn{color:var(--danger);border-color:var(--danger)}
+.addnum{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
+.hint{font-size:12px;color:var(--muted);line-height:1.6;margin:8px 0 0}
+.hint b{color:var(--text)}
+.actions{display:flex;gap:9px;margin-top:16px}
+.btn{flex:1;border-radius:13px;padding:13px 12px;font-size:15.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text)}
+.btn.pri{background:var(--navy);border-color:var(--navy);color:#fff}
+:root[data-theme="dark"] .btn.pri{color:#0f1420}
+.btn.dgr{color:var(--danger);border-color:var(--danger)}
+.btn:active{transform:scale(.98)}
+.menu .it{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:9px;cursor:pointer;font-size:15.5px}
+.menu .it svg{width:19px;height:19px;color:var(--navy);flex:0 0 auto}
+.menu .it span{flex:1}
+.menu .it em{font-style:normal;font-size:12px;color:var(--muted)}
+.menu .it.dgr svg{color:var(--danger)}
+
+/* ---------- 对话框 ---------- */
+#dlg{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(9,14,22,.5)}
+#dlg.on{display:flex}
+#dlg .box{background:var(--bg);border-radius:18px;max-width:400px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+#dlg h3{margin:0 0 8px;font-size:17px}
+#dlg p{margin:0;font-size:14px;color:var(--muted);line-height:1.65;word-break:break-word}
+#dlg .inp{margin-top:14px}
+#dlg .btn{padding:12px;font-size:15px}
+
+/* ---------- 安装引导 / toast ---------- */
+#banner{position:fixed;left:12px;right:12px;bottom:calc(14px + var(--sab));z-index:50;background:var(--navy);color:#fff;
+  border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:11px;box-shadow:0 10px 30px rgba(9,14,22,.35);
+  transform:translateY(160%);transition:transform .3s}
+#banner.on{transform:translateY(0)}
+#banner svg{width:24px;height:24px;flex:0 0 auto}
+#banner .tx{flex:1;font-size:13.5px;line-height:1.4}
+#banner .tx b{display:block;font-size:14.5px;margin-bottom:1px}
+#banner button{border:0;border-radius:9px;padding:8px 12px;font-size:13.5px;font-weight:600;cursor:pointer;background:#fff;color:var(--navy)}
+#banner .later{background:transparent;color:rgba(255,255,255,.8);padding:8px 4px}
+:root[data-theme="dark"] #banner{color:#0f1420}
+:root[data-theme="dark"] #banner button{background:#0f1420;color:#fff}
+:root[data-theme="dark"] #banner .later{color:#0f1420;opacity:.7;background:transparent}
+#toast{position:fixed;left:50%;bottom:calc(88px + var(--sab));transform:translateX(-50%) translateY(16px);background:var(--text);
+  color:var(--bg);padding:10px 18px;border-radius:22px;font-size:13.5px;opacity:0;pointer-events:none;transition:.25s;z-index:95;
+  box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:88vw}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.steps{margin:10px 0 0;padding-left:0;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;display:flex;gap:10px;margin-bottom:9px;font-size:14px;line-height:1.5;color:var(--text)}
+.steps li::before{content:counter(s);flex:0 0 auto;width:21px;height:21px;border-radius:50%;background:var(--navy);color:#fff;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+:root[data-theme="dark"] .steps li::before{color:#0f1420}
+</style>
+</head>
+<body>
+<header>
+  <div class="titlerow">
+    <h1>户主电话簿</h1>
+    <div class="sub" id="sub"></div>
+    <button class="icobtn" id="openMenu" aria-label="设置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+    </button>
+  </div>
+  <div class="tools">
+    <div class="field">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" autocomplete="off" placeholder="搜索姓名 / 拼音 / 手机号">
+      <button id="clear" aria-label="清空">×</button>
+    </div>
+    <button class="chip" id="sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4v16M7 20l-3-3M7 4l3 3M17 20V4M17 4l3 3M17 20l-3-3"/></svg><span id="sortTxt">拼音</span></button>
+    <button class="chip" id="showOff" title="显示已弃用号码">含弃用</button>
+  </div>
+  <div class="stat">
+    <span>共 <b id="total">0</b> 人</span>
+    <span>当前 <b id="shown">0</b> 条</span>
+    <span id="badBox"></span>
+  </div>
+</header>
+
+<main id="list"></main>
+<nav id="rail" aria-label="字母索引"></nav>
+<button id="fab" aria-label="新增联系人">＋</button>
+
+<div id="banner">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16"/></svg>
+  <div class="tx"><b>装到手机桌面，离线也能用</b><span id="bannerTx">一键安装为独立应用</span></div>
+  <button id="bannerGo">安装</button>
+  <button class="later" id="bannerNo">以后再说</button>
+</div>
+
+<div id="mask"></div>
+
+<!-- 联系人编辑 -->
+<section class="sheet" id="shEdit" role="dialog" aria-label="联系人">
+  <div class="hd"><h2 id="editTitle">新增联系人</h2><button class="x" data-close>×</button></div>
+  <div class="bd">
+    <div class="lab">姓名</div>
+    <input class="inp" id="fName" placeholder="请输入姓名" autocomplete="off">
+    <div class="lab">手机号</div>
+    <div id="fNums"></div>
+    <div class="addnum">
+      <input class="inp" id="fNew" inputmode="numeric" placeholder="手机号" autocomplete="off">
+      <button class="mini" id="fAdd">＋ 添加</button>
+    </div>
+    <div class="actions">
+      <button class="btn dgr hide" id="fDel">删除此人</button>
+      <button class="btn" data-close>取消</button>
+      <button class="btn pri" id="fSave">保存</button>
+    </div>
+  </div>
+</section>
+
+<!-- 设置 -->
+<section class="sheet menu" id="shMenu" role="dialog" aria-label="设置">
+  <div class="hd"><h2>设置与数据</h2><button class="x" data-close>×</button></div>
+  <div class="bd" id="menuBody"></div>
+</section>
+
+<!-- 粘贴名单导入 -->
+<section class="sheet" id="shPaste" role="dialog" aria-label="粘贴名单">
+  <div class="hd"><h2>粘贴名单</h2><button class="x" data-close>×</button></div>
+  <div class="bd">
+    <div class="lab">粘贴内容　<span id="pasteMode"></span></div>
+    <textarea class="area" id="pasteTxt" placeholder="张三 13800000000&#10;李四 13900000000&#10;&#10;也可以从 Excel 直接框选复制，制表符和一行多组都能认。" rows="8"></textarea>
+    <div class="hint" id="pasteHint"></div>
+    <div class="actions">
+      <button class="btn" data-close>取消</button>
+      <button class="btn pri" id="pasteGo">导入</button>
+    </div>
+  </div>
+</section>
+
+<!-- 通用对话框 -->
+<div id="dlg" role="dialog" aria-modal="true">
+  <div class="box">
+    <h3 id="dlgT"></h3>
+    <p id="dlgP"></p>
+    <input class="inp hide" id="dlgI" autocomplete="off">
+    <div class="actions">
+      <button class="btn" id="dlgNo">取消</button>
+      <button class="btn pri" id="dlgOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+<input type="file" id="file" class="hide" accept=".json,.txt,.csv,application/json,text/plain">
+
+<!-- ?v= 是版本号：和 sw.js 里的 VER 保持一致。改完代码把这两处一起换成新的 8 位串，手机刷新就会拉新版，不会被旧缓存卡住 -->
+<script src="pinyin.js?v=4cff9666"></script>
+<script src="app.js?v=4cff9666"></script>
+</body>
+</html>
